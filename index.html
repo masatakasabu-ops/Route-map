@@ -8,7 +8,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@400;500;700&family=JetBrains+Mono:wght@500;700&display=swap">
 <style>
-/* 地図の画像に GPX を重ね、速度帯ごとに色分けする。練習メモと同じ配色 */
+/* 地図の画像に GPX を重ね、速度帯ごとに色分けする。保存して、レッグごとに反省を書く。練習メモと同じ配色 */
 :root {
   --bg: #f4f6f1;
   --surface: #ffffff;
@@ -45,6 +45,7 @@ body {
 }
 [hidden] { display: none !important; }
 main { max-width: 760px; margin: 0 auto; display: grid; gap: 22px; }
+.view { display: grid; gap: 22px; }
 header { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; }
 h1 { font-size: 1.35rem; margin: 0; letter-spacing: .02em; }
 header a { color: var(--muted); font-size: .9rem; }
@@ -52,22 +53,51 @@ h2 { font-size: .8rem; letter-spacing: .08em; color: var(--muted); margin: 0 0 8
 section { min-width: 0; }
 .hint { font-size: .8rem; color: var(--muted); margin-top: 6px; min-height: 1.2em; }
 .hint.err { color: var(--warn); }
+.hint.ok { color: var(--forest); }
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 4px; border-radius: 12px; background: var(--line); }
+.tabs button { min-height: 40px; border: 0; border-radius: 9px; background: transparent; color: var(--muted); font: inherit; font-weight: 700; cursor: pointer; }
+.tabs button[aria-selected="true"] { background: var(--surface); color: var(--fg); }
 
 .ghost { font: inherit; padding: 9px 14px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface); color: var(--fg); cursor: pointer; }
 .ghost:disabled { opacity: .45; cursor: default; }
 .ghost.on { border-color: var(--accent); color: var(--accent); font-weight: 700; }
+.danger { font: inherit; padding: 9px 14px; border-radius: 10px; border: 1px solid var(--warn); background: transparent; color: var(--warn); cursor: pointer; }
+.danger.armed { background: var(--warn); color: var(--accent-fg); }
 .primary {
   width: 100%; min-height: 52px; border: 0; border-radius: 12px; background: var(--accent); color: var(--accent-fg);
   font: inherit; font-weight: 700; font-size: 1.05rem; cursor: pointer;
 }
 .primary:disabled { opacity: .45; cursor: default; }
-input[type="text"] {
+input[type="text"], input[type="email"], input[type="password"], input[type="date"], textarea {
   font: inherit; color: var(--fg); background: var(--surface);
-  border: 1px solid var(--line); border-radius: 10px; padding: 9px 12px; min-width: 0;
+  border: 1px solid var(--line); border-radius: 10px; padding: 9px 12px; min-width: 0; width: 100%;
 }
+textarea { min-height: 72px; resize: vertical; }
 input[type="range"] { width: 100%; accent-color: var(--accent); }
 
+/* 一覧 */
+.cards { display: grid; gap: 10px; }
+.card {
+  display: grid; grid-template-columns: 96px minmax(0, 1fr); gap: 12px; align-items: center; text-align: left;
+  width: 100%; padding: 10px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); color: var(--fg); font: inherit; cursor: pointer;
+}
+.card .thumb { width: 96px; height: 72px; border-radius: 8px; background: var(--line) center / cover no-repeat; }
+.card .t { font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.card .s { font-family: var(--font-num); font-size: .78rem; color: var(--muted); }
+.card .chips { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 4px; }
+.chip { font-size: .72rem; padding: 2px 8px; border-radius: 999px; white-space: nowrap; }
+.chip.done { background: color-mix(in srgb, var(--forest) 18%, transparent); color: var(--forest); }
+.chip.todo { background: color-mix(in srgb, var(--accent) 18%, transparent); color: var(--accent); }
+.chip.loss { background: color-mix(in srgb, var(--warn) 15%, transparent); color: var(--warn); }
+details.setup { border: 1px solid var(--line); border-radius: 12px; background: var(--surface); padding: 10px 14px; }
+details.setup summary { cursor: pointer; font-weight: 700; }
+.form { display: grid; gap: 10px; margin-top: 10px; }
+.form label { display: grid; gap: 4px; font-size: .85rem; font-weight: 700; }
+.row { display: flex; gap: 8px; flex-wrap: wrap; }
+
+/* 作成 */
 .loadrow { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .filebtn {
   position: relative; display: grid; place-items: center; min-height: 52px; padding: 8px; text-align: center;
@@ -105,7 +135,7 @@ input[type="range"] { width: 100%; accent-color: var(--accent); }
 .seg button[aria-pressed="true"] { background: var(--surface); color: var(--fg); }
 .field { display: grid; gap: 4px; margin-top: 12px; }
 .field > span { font-size: .85rem; font-weight: 700; }
-.field input[type="text"] { width: 100%; font-family: var(--font-num); }
+#bounds { font-family: var(--font-num); }
 .even { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 10px; font-size: .85rem; }
 .even input { width: 4.6em; font-family: var(--font-num); text-align: center; padding: 7px 4px; }
 .even .ghost { padding: 7px 12px; }
@@ -128,7 +158,48 @@ input[type="range"] { width: 100%; accent-color: var(--accent); }
 .tile { display: grid; gap: 0; padding: 10px 12px; border-radius: 12px; background: var(--surface); border: 1px solid var(--line); min-width: 0; }
 .tile .k { font-size: .72rem; color: var(--muted); letter-spacing: .06em; }
 .tile .v { font-family: var(--font-num); font-size: 1.25rem; font-weight: 700; font-variant-numeric: tabular-nums; }
-.export { display: grid; gap: 8px; }
+.stack { display: grid; gap: 8px; }
+.two { display: grid; grid-template-columns: minmax(0, 1fr) 11em; gap: 8px; }
+
+/* 反省 */
+.rvhead { display: grid; gap: 8px; }
+.rvhead .title { font-size: 1.15rem; font-weight: 700; }
+.leg { border: 1px solid var(--line); border-radius: 12px; background: var(--surface); }
+.leg > summary {
+  list-style: none; cursor: pointer; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 12px 14px;
+}
+.leg > summary::-webkit-details-marker { display: none; }
+.leg .no { font-family: var(--font-num); font-weight: 700; color: var(--overprint); font-size: 1.05rem; white-space: nowrap; }
+.leg .ls { font-family: var(--font-num); font-size: .8rem; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.leg[open] > summary { border-bottom: 1px solid var(--line); }
+.legbody { display: grid; gap: 12px; padding: 12px 14px 16px; }
+.crop { display: block; width: 100%; aspect-ratio: 4 / 3; max-width: 100%; border-radius: 8px; border: 1px solid var(--line); cursor: zoom-in; }
+.legstats { font-family: var(--font-num); font-size: .82rem; }
+.bandbar { display: flex; height: 8px; border-radius: 4px; overflow: hidden; background: var(--line); }
+.loss { display: flex; align-items: center; gap: 8px; font-size: .9rem; font-weight: 700; }
+.loss input { width: 6em; font-family: var(--font-num); text-align: center; }
+.tags { display: flex; flex-wrap: wrap; gap: 6px; }
+.tags button { font: inherit; font-size: .8rem; padding: 5px 11px; border-radius: 999px; cursor: pointer; border: 1px solid var(--line); background: transparent; color: var(--muted); }
+.tags button[aria-pressed="true"] { background: var(--overprint); border-color: var(--overprint); color: #fff; }
+.tags button.good[aria-pressed="true"] { background: var(--forest); border-color: var(--forest); }
+.legbody label { display: grid; gap: 4px; font-size: .85rem; font-weight: 700; }
+.tablewrap { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-size: .85rem; }
+th, td { padding: 6px 8px; border-bottom: 1px solid var(--line); text-align: right; white-space: nowrap; font-family: var(--font-num); }
+th:first-child, td:first-child { text-align: left; }
+th { font-family: var(--font-body); color: var(--muted); font-weight: 700; font-size: .75rem; }
+td.tg { text-align: left; font-family: var(--font-body); color: var(--muted); }
+.savestate { position: sticky; bottom: calc(8px + env(safe-area-inset-bottom, 0px)); justify-self: center; padding: 6px 14px; border-radius: 999px; background: var(--fg); color: var(--bg); font-size: .8rem; }
+
+/* レッグの拡大表示。作成画面の地図キャンバスをそのまま移して使う */
+.zoom {
+  position: fixed; inset: 0; z-index: 20; background: var(--bg); display: grid; grid-template-rows: auto minmax(0, 1fr); gap: 8px;
+  padding: calc(8px + env(safe-area-inset-top, 0px)) max(8px, env(safe-area-inset-right, 0px)) calc(8px + env(safe-area-inset-bottom, 0px)) max(8px, env(safe-area-inset-left, 0px));
+}
+.zoom .zh { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.zoom .zh b { font-family: var(--font-num); color: var(--overprint); }
+.zoom .stage { height: auto; }
+.zoom #pairBtn, .zoom #undoBtn { display: none; }
 </style>
 </head>
 <body>
@@ -138,71 +209,143 @@ input[type="range"] { width: 100%; accent-color: var(--accent); }
     <a href="https://masatakasabu-ops.github.io/Training-memo/">← 練習メモ</a>
   </header>
 
-  <section>
-    <h2>1. 読み込む</h2>
-    <div class="loadrow">
-      <label class="filebtn" id="imgLabel">地図の画像<small>写真・スキャン</small><input type="file" id="imgFile" accept="image/*"></label>
-      <label class="filebtn" id="gpxLabel">GPXファイル<small>.gpx</small><input type="file" id="gpxFile" accept=".gpx,application/gpx+xml,application/xml,text/xml"></label>
-    </div>
-    <div id="icuBox" hidden>
-      <div class="hint">または Intervals.icu の記録（直近14日）から選ぶ</div>
-      <div id="icuList" class="icu"></div>
-    </div>
-    <div class="hint" id="loadMsg"></div>
-  </section>
+  <nav class="tabs" role="tablist">
+    <button type="button" role="tab" id="tabList">一覧</button>
+    <button type="button" role="tab" id="tabEdit">作成</button>
+  </nav>
 
-  <section>
-    <div class="stage" id="stage">
-      <canvas id="cv"></canvas>
-      <div class="empty" id="empty">地図の画像と GPX を読み込むと、ここに重ねて表示します</div>
-      <div class="bubble" id="bubble" hidden></div>
-      <div class="toolbar">
-        <button class="ghost" type="button" id="pairBtn" disabled>合わせ点を追加</button>
-        <button class="ghost" type="button" id="undoBtn" disabled>1つ戻す</button>
-        <button class="ghost" type="button" id="fitBtn">全体</button>
+  <!-- ========== 一覧 ========== -->
+  <div class="view" id="listView">
+    <button class="primary" type="button" id="newBtn">＋ 新しく作る</button>
+    <section>
+      <h2>保存したルート図</h2>
+      <div class="cards" id="routeList"></div>
+      <div class="hint" id="listMsg"></div>
+    </section>
+    <details class="setup" id="setup">
+      <summary>保存先の設定（Supabase）</summary>
+      <div class="form">
+        <label>Project URL<input type="text" id="sbUrl" placeholder="https://xxxx.supabase.co" autocomplete="off" spellcheck="false"></label>
+        <label>Publishable key（anon key）<input type="password" id="sbKey" autocomplete="off"></label>
+        <label>メールアドレス<input type="email" id="sbEmail" autocomplete="username"></label>
+        <label>パスワード<input type="password" id="sbPass" autocomplete="current-password"></label>
+        <div class="row">
+          <button class="ghost" type="button" id="loginBtn">ログイン</button>
+          <button class="ghost" type="button" id="logoutBtn" hidden>ログアウト</button>
+        </div>
+        <div class="hint" id="sbMsg"></div>
       </div>
-    </div>
-    <div class="probe" id="probe"></div>
-    <div class="hint" id="alignMsg">軌跡をタップすると、その地点の速度が出ます。2本指で拡大、ドラッグで移動。</div>
-  </section>
+    </details>
+  </div>
 
-  <section>
-    <h2>2. 速度の色分け</h2>
-    <div class="seg" role="group" aria-label="単位">
-      <button type="button" data-unit="pace">ペース（分/km）</button>
-      <button type="button" data-unit="kmh">速度（km/h）</button>
-    </div>
-    <label class="field"><span>区切り</span><input type="text" id="bounds" autocomplete="off" spellcheck="false"></label>
-    <div class="hint" id="boundsMsg"></div>
-    <div class="even">
-      <span>等間隔で</span>
-      <input type="text" id="evFrom" aria-label="から">〜<input type="text" id="evTo" aria-label="まで">
-      <span>刻み</span><input type="text" id="evStep" aria-label="刻み">
-      <button class="ghost" type="button" id="evBtn">作る</button>
-    </div>
-    <div class="legend" id="legend"></div>
-  </section>
+  <!-- ========== 作成 ========== -->
+  <div class="view" id="editView" hidden>
+    <section>
+      <h2>1. 読み込む</h2>
+      <div class="loadrow">
+        <label class="filebtn" id="imgLabel">地図の画像<small>写真・スキャン</small><input type="file" id="imgFile" accept="image/*"></label>
+        <label class="filebtn" id="gpxLabel">GPXファイル<small>.gpx</small><input type="file" id="gpxFile" accept=".gpx,application/gpx+xml,application/xml,text/xml"></label>
+      </div>
+      <div id="icuBox" hidden>
+        <div class="hint">または Intervals.icu の記録（直近14日）から選ぶ</div>
+        <div id="icuList" class="icu"></div>
+      </div>
+      <div class="hint" id="loadMsg"></div>
+    </section>
 
-  <section>
-    <h2>3. 区間と表示</h2>
-    <div class="sliders">
-      <div class="sl"><div><span>はじめ</span><b id="aLbl"></b></div><input type="range" id="rangeA" min="0" max="1" value="0"></div>
-      <div class="sl"><div><span>おわり</span><b id="bLbl"></b></div><input type="range" id="rangeB" min="0" max="1" value="1"></div>
-      <div class="summary" id="summary"></div>
-      <div class="sl"><div><span>速度のならし</span><b id="smLbl"></b></div><input type="range" id="smooth" min="1" max="30" value="8"></div>
-      <div class="sl"><div><span>線の太さ</span><b id="lwLbl"></b></div><input type="range" id="lw" min="2" max="14" value="5"></div>
-      <div class="sl"><div><span>地図の濃さ</span><b id="opLbl"></b></div><input type="range" id="op" min="20" max="100" value="100"></div>
-      <label class="check"><input type="checkbox" id="halo" checked>線を白で縁取る（地図の色と見分けやすく）</label>
-    </div>
-  </section>
+    <section id="stageHome">
+      <div class="stage" id="stage">
+        <canvas id="cv"></canvas>
+        <div class="empty" id="empty">地図の画像と GPX を読み込むと、ここに重ねて表示します</div>
+        <div class="bubble" id="bubble" hidden></div>
+        <div class="toolbar">
+          <button class="ghost" type="button" id="pairBtn" disabled>合わせ点を追加</button>
+          <button class="ghost" type="button" id="undoBtn" disabled>1つ戻す</button>
+          <button class="ghost" type="button" id="fitBtn">全体</button>
+        </div>
+      </div>
+      <div class="probe" id="probe"></div>
+      <div class="hint" id="alignMsg"></div>
+    </section>
 
-  <section class="export">
-    <h2>4. 画像にする</h2>
-    <button class="primary" type="button" id="expBtn" disabled>画像を作る</button>
-    <div class="hint" id="expMsg">いま画面で見ている線の太さのまま、地図全体を1枚の画像にします。</div>
-  </section>
+    <section>
+      <h2>2. 速度の色分け</h2>
+      <div class="seg" role="group" aria-label="単位">
+        <button type="button" data-unit="pace">ペース（分/km）</button>
+        <button type="button" data-unit="kmh">速度（km/h）</button>
+      </div>
+      <label class="field"><span>区切り</span><input type="text" id="bounds" autocomplete="off" spellcheck="false"></label>
+      <div class="hint" id="boundsMsg"></div>
+      <div class="even">
+        <span>等間隔で</span>
+        <input type="text" id="evFrom" aria-label="から">〜<input type="text" id="evTo" aria-label="まで">
+        <span>刻み</span><input type="text" id="evStep" aria-label="刻み">
+        <button class="ghost" type="button" id="evBtn">作る</button>
+      </div>
+      <div class="legend" id="legend"></div>
+    </section>
+
+    <section>
+      <h2>3. 区間と表示</h2>
+      <div class="sliders">
+        <div class="sl"><div><span>はじめ（スタート）</span><b id="aLbl"></b></div><input type="range" id="rangeA" min="0" max="1" value="0"></div>
+        <div class="sl"><div><span>おわり（ゴール）</span><b id="bLbl"></b></div><input type="range" id="rangeB" min="0" max="1" value="1"></div>
+        <div class="summary" id="summary"></div>
+        <div class="sl"><div><span>速度のならし</span><b id="smLbl"></b></div><input type="range" id="smooth" min="1" max="30" value="8"></div>
+        <div class="sl"><div><span>線の太さ</span><b id="lwLbl"></b></div><input type="range" id="lw" min="2" max="14" value="5"></div>
+        <div class="sl"><div><span>地図の濃さ</span><b id="opLbl"></b></div><input type="range" id="op" min="20" max="100" value="100"></div>
+        <label class="check"><input type="checkbox" id="halo" checked>線を白で縁取る（地図の色と見分けやすく）</label>
+      </div>
+    </section>
+
+    <section class="stack">
+      <h2>4. 保存して反省を書く</h2>
+      <div class="two">
+        <input type="text" id="title" placeholder="名前（例：全日本ミドル 予選）" aria-label="名前">
+        <input type="date" id="raceDate" aria-label="日付">
+      </div>
+      <button class="primary" type="button" id="saveBtn" disabled>保存して反省を書く</button>
+      <div class="hint" id="saveMsg"></div>
+    </section>
+
+    <section class="stack">
+      <h2>5. 画像にする</h2>
+      <button class="ghost" type="button" id="expBtn" disabled>画像を作る</button>
+      <div class="hint" id="expMsg">いま画面で見ている線の太さのまま、地図全体を1枚の画像にします。</div>
+    </section>
+  </div>
+
+  <!-- ========== 反省 ========== -->
+  <div class="view" id="reviewView" hidden>
+    <div class="rvhead">
+      <div class="two">
+        <input type="text" id="rvTitle" class="title" aria-label="名前">
+        <input type="date" id="rvDate" aria-label="日付">
+      </div>
+      <div class="summary" id="rvStats"></div>
+      <div class="row">
+        <button class="ghost" type="button" id="rvEdit">地図・合わせ点を直す</button>
+        <button class="danger" type="button" id="rvDelete">削除</button>
+      </div>
+      <div class="hint">合わせ点を通った順に 1, 2, 3… とし、スタート→1→2→…→ゴール をレッグにしています。図をタップすると拡大できます。</div>
+    </div>
+    <section>
+      <h2>レッグごとの反省</h2>
+      <div class="stack" id="legsBox"></div>
+    </section>
+    <section>
+      <h2>まとめ</h2>
+      <div class="stack" id="rvSummary"></div>
+    </section>
+    <div class="savestate" id="saveState" hidden></div>
+  </div>
 </main>
 
+<div class="zoom" id="zoom" hidden>
+  <div class="zh"><b id="zoomTitle"></b><button class="ghost" type="button" id="zoomClose">閉じる</button></div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/dist/umd/supabase.js"></script>
 <script>
 const API = "https://intervals.icu/api/v1";
 const $ = id => document.getElementById(id);
@@ -212,17 +355,24 @@ function pad(n) { return String(n).padStart(2, "0"); }
 // 遅い → 速い。地図の黄・緑・茶とぶつかりにくいよう彩度の高い色にしている
 const RAMP = ["#c1121f", "#f3722c", "#f9c74f", "#90be6d", "#2a9d8f", "#277da1", "#5a189a"];
 const MAX_BOUNDS = 12;
+const OVERPRINT = "#a626a4";
+const MAX_MAP = 3000;     // 保存する地図の長い辺（px）
+const TAGS = ["ルート選択", "方向", "距離感", "アタック", "読図不足", "パラレル", "確認不足", "集中切れ", "焦り", "体力・脚"];
+const GOOD = "◎ 良いレッグ";
 
 const cv = $("cv"), ctx = cv.getContext("2d");
 let img = null, W = 2000, H = 2000;
-let track = null;          // { name, n, px, py, t, d, v, band, ix, iy, hasTime }
+let track = null;          // { name, n, raw, px, py, t, d, up, v, band, ix, iy, hasTime, hasEle }
 let A = { re: 1, im: 0 }, B = { re: 0, im: 0 };  // 画像座標 = A × 軌跡座標 + B（複素数で回転・縮尺・移動）
-let pairs = [];            // 合わせ点 { i: 軌跡の点, q: 画像上の位置 }
+let pairs = [];            // 合わせ点 { id, i: 軌跡の点, q: 画像上の位置 }
 let view = { k: 1, x: 0, y: 0 };
 let mode = "idle", pendingI = -1, probeI = -1;
 let unit = "pace", th = [6, 7.5, 3600 / 390, 3600 / 330, 3600 / 270], colorOverride = {};
 let ra = 0, rb = 1;
 let exportFile = null;
+// 保存の単位。id が null なら未保存
+let route = { id: null, title: "", date: "", activityId: null, notes: {} };
+let mapBlob = null, trackDirty = false, mapDirty = false;
 
 /* ---------- 単位 ---------- */
 
@@ -252,6 +402,16 @@ function fmtDur(s) {
   const h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60);
   return h ? `${h}:${pad(m)}:${pad(s % 60)}` : `${m}:${pad(s % 60)}`;
 }
+// ロス時間の入力。「30」は30秒、「1:30」は90秒
+function parseDur(s) {
+  s = toHalf(String(s || "")).trim();
+  if (!s) return 0;
+  const m = s.match(/^(\d+):(\d{1,2})$/);
+  if (m) return Number(m[1]) * 60 + Number(m[2]);
+  const n = Number(s);
+  return Number.isFinite(n) && n >= 0 ? Math.round(n) : NaN;
+}
+function ymdOf(sec) { const d = new Date(sec * 1000); return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`; }
 
 /* ---------- GPX ---------- */
 
@@ -263,39 +423,65 @@ function child(el, name) {
 function parseGpx(text, name) {
   const doc = new DOMParser().parseFromString(text, "application/xml");
   if (doc.getElementsByTagName("parsererror").length) throw new Error("GPXファイルを読めませんでした。");
-  const nodes = doc.getElementsByTagNameNS("*", "trkpt");
-  const lat = [], lon = [], tt = [];
-  for (const p of nodes) {
+  const lat = [], lon = [], tt = [], ele = [];
+  for (const p of doc.getElementsByTagNameNS("*", "trkpt")) {
     const la = Number(p.getAttribute("lat")), lo = Number(p.getAttribute("lon"));
     if (!Number.isFinite(la) || !Number.isFinite(lo)) continue;
     lat.push(la); lon.push(lo);
-    const ts = child(p, "time");
+    const ts = child(p, "time"), e = child(p, "ele");
     tt.push(ts ? Date.parse(ts) / 1000 : NaN);
+    ele.push(e != null ? Number(e) : NaN);
   }
-  const n = lat.length;
-  if (n < 2) throw new Error("このGPXには軌跡がありません。");
+  return buildTrack({ name, lat, lon, tt, ele });
+}
 
+function buildTrack(raw) {
+  const { lat, lon, tt, ele } = raw, n = lat.length;
+  if (n < 2) throw new Error("このGPXには軌跡がありません。");
   // 平面に投影（m）。x は東、y は南を正にして、そのまま北が上の画像座標に乗るようにする
   const lat0 = lat.reduce((s, v) => s + v, 0) / n, lon0 = lon.reduce((s, v) => s + v, 0) / n;
   const my = 6371008.8 * Math.PI / 180, mx = my * Math.cos(lat0 * Math.PI / 180);
-  const px = new Float64Array(n), py = new Float64Array(n), d = new Float64Array(n), t = new Float64Array(n);
+  const px = new Float64Array(n), py = new Float64Array(n), d = new Float64Array(n), t = new Float64Array(n), up = new Float64Array(n);
   const hasTime = tt.every(Number.isFinite) && tt[n - 1] > tt[0];
+  const hasEle = ele.filter(Number.isFinite).length > n * .9;
+  let ref = NaN;
   for (let i = 0; i < n; i++) {
     px[i] = (lon[i] - lon0) * mx;
     py[i] = -(lat[i] - lat0) * my;
-    if (i) d[i] = d[i - 1] + Math.hypot(px[i] - px[i - 1], py[i] - py[i - 1]);
+    if (i) { d[i] = d[i - 1] + Math.hypot(px[i] - px[i - 1], py[i] - py[i - 1]); up[i] = up[i - 1]; }
     t[i] = hasTime ? tt[i] - tt[0] : NaN;
+    // 登りは 3m 以上の上下だけ数える（気圧高度の細かな揺れを拾わない）
+    const e = ele[i];
+    if (hasEle && Number.isFinite(e)) {
+      if (!Number.isFinite(ref)) ref = e;
+      else if (e - ref >= 3) { up[i] += e - ref; ref = e; }
+      else if (ref - e >= 3) ref = e;
+    }
   }
-  return { name, n, px, py, t, d, hasTime, v: new Float64Array(n), band: new Uint8Array(n), ix: new Float64Array(n), iy: new Float64Array(n) };
+  return { name: raw.name, n, raw, px, py, t, d, up, hasTime, hasEle, v: new Float64Array(n), band: new Uint8Array(n), ix: new Float64Array(n), iy: new Float64Array(n) };
+}
+
+function trackJson(tr) {
+  const { lat, lon, tt, ele } = tr.raw, t0 = Number.isFinite(tt[0]) ? tt[0] : null;
+  return JSON.stringify({
+    v: 1, name: tr.name, t0,
+    lat: lat.map(v => +v.toFixed(6)), lon: lon.map(v => +v.toFixed(6)),
+    t: tt.map(v => (Number.isFinite(v) && t0 != null ? Math.round((v - t0) * 10) / 10 : null)),
+    ele: ele.map(v => (Number.isFinite(v) ? Math.round(v * 10) / 10 : null)),
+  });
+}
+function trackFromJson(j) {
+  return buildTrack({ name: j.name, lat: j.lat, lon: j.lon, tt: j.t.map(v => (v == null || j.t0 == null ? NaN : j.t0 + v)), ele: j.ele.map(v => (v == null ? NaN : v)) });
 }
 
 function setTrack(tr) {
-  track = tr;
+  track = tr; trackDirty = true;
   pairs = []; mode = "idle"; pendingI = -1; probeI = -1; exportFile = null;
   ra = 0; rb = tr.n - 1;
-  for (const id of ["rangeA", "rangeB"]) { $(id).max = tr.n - 1; }
+  $("rangeA").max = $("rangeB").max = tr.n - 1;
   $("rangeA").value = ra; $("rangeB").value = rb;
   $("gpxLabel").classList.add("done");
+  if (!$("raceDate").value && tr.hasTime) $("raceDate").value = ymdOf(tr.raw.tt[0]);
   computeSpeed(); fitTrack(); fitView(); refresh();
 }
 
@@ -369,12 +555,45 @@ function solvePairs() {
 function alignText() {
   if (!track) return "軌跡をタップすると、その地点の速度が出ます。2本指で拡大、ドラッグで移動。";
   if (!img) return "地図の画像を読み込むと、軌跡を地図に合わせられます。";
-  if (!pairs.length) return "いまは北を上にして置いただけです。「合わせ点を追加」で、コントロールや道の分岐など場所のはっきりした点を2〜3か所、なるべく離して合わせてください。";
+  if (!pairs.length) return "いまは北を上にして置いただけです。「合わせ点を追加」で、コントロールの位置を通った順に合わせてください（合わせ点がそのままレッグの区切りになります）。2〜3か所以上、なるべく離すと向きと縮尺も合います。";
   if (pairs.length === 1) return "合わせ点1か所：位置だけ合わせています。もう1か所以上で向きと縮尺も合います。";
   const scale = Math.hypot(A.re, A.im);
   const rms = Math.sqrt(pairs.reduce((s, p) => s + (track.ix[p.i] - p.q.x) ** 2 + (track.iy[p.i] - p.q.y) ** 2, 0) / pairs.length);
   const rot = Math.round(Math.atan2(A.im, A.re) * 180 / Math.PI);
   return `合わせ点${pairs.length}か所：ずれ 平均${Math.round(rms / scale)}m ・ 回転${rot}° ・ 地図1pxあたり${(1 / scale).toFixed(2)}m。ずれが大きい点は「1つ戻す」で外せます。`;
+}
+
+/* ---------- レッグ ---------- */
+
+// 合わせ点を通った順に並べ、スタート→1→…→ゴールで区切る
+function controls() {
+  const ps = pairs.filter(p => p.i > ra && p.i < rb).sort((a, b) => a.i - b.i);
+  return [
+    { key: "S", i: ra, label: "S", x: track.ix[ra], y: track.iy[ra] },
+    ...ps.map((p, k) => ({ key: p.id, i: p.i, label: String(k + 1), x: p.q.x, y: p.q.y })),
+    { key: "F", i: rb, label: "F", x: track.ix[rb], y: track.iy[rb] },
+  ];
+}
+function legs() {
+  const cs = controls();
+  return cs.slice(0, -1).map((a, k) => ({ from: a, to: cs[k + 1], key: `${a.key}>${cs[k + 1].key}`, name: `${a.label} → ${cs[k + 1].label}` }));
+}
+
+function legStats(a, b) {
+  const { t, d, up, px, py, hasTime, hasEle, band } = track;
+  const dist = d[b] - d[a], straight = Math.hypot(px[b] - px[a], py[b] - py[a]);
+  const sec = hasTime ? t[b] - t[a] : NaN;
+  const time = new Array(th.length + 1).fill(0);
+  if (hasTime) for (let i = a; i < b; i++) { const dt = t[i + 1] - t[i]; if (dt <= 60) time[band[i]] += dt; }
+  return { dist, straight, sec, climb: hasEle ? up[b] - up[a] : NaN, ratio: straight > 5 ? dist / straight : NaN, pace: hasTime && dist > 0 ? dist / sec * 3.6 : NaN, time };
+}
+
+const hasNote = n => !!n && (n.loss > 0 || (n.tags && n.tags.length) || (n.text || "").trim() || (n.next || "").trim());
+
+function routeSummary() {
+  const L = legs(), km = (track.d[rb] - track.d[ra]) / 1000, sec = track.hasTime ? track.t[rb] - track.t[ra] : null;
+  const notes = L.map(l => route.notes[l.key]);
+  return { km: +km.toFixed(2), sec, legs: L.length, done: notes.filter(hasNote).length, loss: notes.reduce((s, n) => s + (n?.loss || 0), 0) };
 }
 
 /* ---------- 描画 ---------- */
@@ -396,46 +615,66 @@ function bandColors() {
   return Array.from({ length: n }, (_, b) => colorOverride[b] || rampColor(n === 1 ? .5 : b / (n - 1)));
 }
 
-// 画像座標で描く。lw は画像座標での線の太さ
-function drawScene(c, lw, opts = {}) {
+function drawMap(c) {
   if (img) {
     c.globalAlpha = Number($("op").value) / 100;
-    c.drawImage(img, 0, 0);
+    c.drawImage(img, 0, 0, W, H);
     c.globalAlpha = 1;
   } else {
     c.fillStyle = "#ffffff"; c.fillRect(0, 0, W, H);
   }
-  if (!track) return;
+}
+
+// a〜b の軌跡を速度の色で描く。faint なら薄い灰色1本で
+function strokeTrack(c, lw, a, b, faint) {
   const { ix, iy, band } = track;
+  const poly = () => { c.beginPath(); c.moveTo(ix[a], iy[a]); for (let i = a + 1; i <= b; i++) c.lineTo(ix[i], iy[i]); };
   c.lineCap = "round"; c.lineJoin = "round";
-  if ($("halo").checked) {
-    c.strokeStyle = "rgba(255,255,255,.9)"; c.lineWidth = lw * 1.8;
-    c.beginPath(); c.moveTo(ix[ra], iy[ra]);
-    for (let i = ra + 1; i <= rb; i++) c.lineTo(ix[i], iy[i]);
-    c.stroke();
-  }
+  if (faint) { c.strokeStyle = "rgba(70,70,70,.35)"; c.lineWidth = lw * .6; poly(); c.stroke(); return; }
+  if ($("halo").checked) { c.strokeStyle = "rgba(255,255,255,.9)"; c.lineWidth = lw * 1.8; poly(); c.stroke(); }
   c.lineWidth = lw;
-  if (!track.hasTime) {
-    c.strokeStyle = "#c1121f";
-    c.beginPath(); c.moveTo(ix[ra], iy[ra]);
-    for (let i = ra + 1; i <= rb; i++) c.lineTo(ix[i], iy[i]);
-    c.stroke();
-  } else {
-    const cols = bandColors(), paths = cols.map(() => new Path2D());
-    for (let i = ra; i < rb; i++) { const p = paths[band[i]]; p.moveTo(ix[i], iy[i]); p.lineTo(ix[i + 1], iy[i + 1]); }
-    paths.forEach((p, b) => { c.strokeStyle = cols[b]; c.stroke(p); });
+  if (!track.hasTime) { c.strokeStyle = "#c1121f"; poly(); c.stroke(); return; }
+  const cols = bandColors(), paths = cols.map(() => new Path2D());
+  for (let i = a; i < b; i++) { const p = paths[band[i]]; p.moveTo(ix[i], iy[i]); p.lineTo(ix[i + 1], iy[i + 1]); }
+  paths.forEach((p, k) => { c.strokeStyle = cols[k]; c.stroke(p); });
+}
+
+// コース図の記号：スタートの三角、コントロールの円と番号、ゴールの二重丸、レッグの線
+function drawCourse(c, r, w, opts = {}) {
+  const cs = controls(), col = opts.color || OVERPRINT, only = opts.only;
+  c.strokeStyle = col; c.lineWidth = w; c.lineCap = "round";
+  for (let k = 0; k < cs.length - 1; k++) {
+    const a = cs[k], b = cs[k + 1], dx = b.x - a.x, dy = b.y - a.y, len = Math.hypot(dx, dy);
+    if (len < r * 2.6) continue;
+    c.globalAlpha = only && only !== `${a.key}>${b.key}` ? .35 : 1;
+    c.beginPath(); c.moveTo(a.x + dx / len * r * 1.2, a.y + dy / len * r * 1.2); c.lineTo(b.x - dx / len * r * 1.2, b.y - dy / len * r * 1.2); c.stroke();
   }
-  // スタートの三角とゴールの二重丸（コース図の記号）
-  const op = opts.overprint || "#a626a4", r = lw * 2.4;
-  c.strokeStyle = op; c.lineWidth = lw * .55;
-  const ang = Math.atan2(iy[Math.min(rb, ra + 5)] - iy[ra], ix[Math.min(rb, ra + 5)] - ix[ra]);
-  c.beginPath();
-  for (let k = 0; k < 3; k++) {
-    const a = ang + k * 2 * Math.PI / 3;
-    c[k ? "lineTo" : "moveTo"](ix[ra] + r * 1.2 * Math.cos(a), iy[ra] + r * 1.2 * Math.sin(a));
-  }
-  c.closePath(); c.stroke();
-  for (const rr of [r, r * .7]) { c.beginPath(); c.arc(ix[rb], iy[rb], rr, 0, Math.PI * 2); c.stroke(); }
+  c.globalAlpha = 1;
+  cs.forEach((p, k) => {
+    c.beginPath();
+    if (p.key === "S") {
+      const n = cs[1], ang = Math.atan2(n.y - p.y, n.x - p.x);
+      for (let j = 0; j < 3; j++) { const a = ang + j * 2 * Math.PI / 3; c[j ? "lineTo" : "moveTo"](p.x + r * 1.25 * Math.cos(a), p.y + r * 1.25 * Math.sin(a)); }
+      c.closePath(); c.stroke();
+    } else if (p.key === "F") {
+      c.arc(p.x, p.y, r, 0, Math.PI * 2); c.stroke();
+      c.beginPath(); c.arc(p.x, p.y, r * .7, 0, Math.PI * 2); c.stroke();
+    } else {
+      c.arc(p.x, p.y, r, 0, Math.PI * 2); c.stroke();
+      c.font = `700 ${r * 1.5}px "JetBrains Mono", monospace`; c.textBaseline = "bottom";
+      c.lineWidth = w * 1.6; c.strokeStyle = "rgba(255,255,255,.95)"; c.strokeText(p.label, p.x + r * .8, p.y - r * .6);
+      c.fillStyle = col; c.fillText(p.label, p.x + r * .8, p.y - r * .6);
+      c.strokeStyle = col; c.lineWidth = w;
+    }
+  });
+}
+
+// 画像座標で描く。lw は画像座標での線の太さ
+function drawScene(c, lw) {
+  drawMap(c);
+  if (!track) return;
+  strokeTrack(c, lw, ra, rb);
+  drawCourse(c, lw * 2.6, lw * .5);
 }
 
 function render() {
@@ -445,18 +684,18 @@ function render() {
   $("empty").hidden = !!(img || track);
   if (!img && !track) return;
   ctx.setTransform(dpr * view.k, 0, 0, dpr * view.k, dpr * view.x, dpr * view.y);
-  const lw = Number($("lw").value) / view.k;
-  drawScene(ctx, lw, { overprint: cssVar("--overprint") });
+  const u = 1 / view.k;
+  drawMap(ctx);
   if (!track) return;
-  const { ix, iy } = track, u = 1 / view.k;
-  // 合わせ点：地図上の正しい位置（紫の円）と、軌跡のその点を結ぶ
-  ctx.lineWidth = 2 * u;
-  for (const p of pairs) {
-    ctx.strokeStyle = "#a626a4";
-    ctx.beginPath(); ctx.moveTo(p.q.x, p.q.y); ctx.lineTo(ix[p.i], iy[p.i]); ctx.stroke();
-    ctx.beginPath(); ctx.arc(p.q.x, p.q.y, 10 * u, 0, Math.PI * 2); ctx.stroke();
-  }
-  for (const [i, col] of [[pendingI, "#a626a4"], [probeI, "#111111"]]) {
+  const zl = $("zoom").hidden ? null : zoomLeg;
+  if (zl) { strokeTrack(ctx, Number($("lw").value) * u, ra, rb, true); strokeTrack(ctx, Number($("lw").value) * u, zl.from.i, zl.to.i); }
+  else strokeTrack(ctx, Number($("lw").value) * u, ra, rb);
+  drawCourse(ctx, 13 * u, 2.2 * u, { only: zl?.key });
+  // 合わせ点：軌跡のその点と地図上の位置を細い線で結ぶ（ずれの確認用）
+  const { ix, iy } = track;
+  ctx.strokeStyle = OVERPRINT; ctx.lineWidth = 1.2 * u;
+  for (const p of pairs) { ctx.beginPath(); ctx.moveTo(p.q.x, p.q.y); ctx.lineTo(ix[p.i], iy[p.i]); ctx.stroke(); }
+  for (const [i, col] of [[pendingI, OVERPRINT], [probeI, "#111111"]]) {
     if (i < 0) continue;
     ctx.fillStyle = "#ffffff"; ctx.strokeStyle = col; ctx.lineWidth = 3 * u;
     ctx.beginPath(); ctx.arc(ix[i], iy[i], 8 * u, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
@@ -469,10 +708,13 @@ function resize() {
   draw();
 }
 
-function fitScale() { const r = cv.getBoundingClientRect(); return Math.min(r.width / W, r.height / H); }
-function fitView() {
-  const r = cv.getBoundingClientRect(), k = fitScale();
-  view = { k, x: (r.width - W * k) / 2, y: (r.height - H * k) / 2 };
+function fitScale() { const r = cv.getBoundingClientRect(); return Math.min(r.width / W, r.height / H) || 1; }
+function fitView() { fitBox(0, 0, W, H); }
+function fitBox(x0, y0, x1, y1) {
+  const r = cv.getBoundingClientRect();
+  if (!r.width) return;
+  const k = Math.min(r.width / (x1 - x0), r.height / (y1 - y0));
+  view = { k, x: (r.width - (x0 + x1) * k) / 2, y: (r.height - (y0 + y1) * k) / 2 };
   draw();
 }
 function zoomAt(sx, sy, k) {
@@ -547,7 +789,7 @@ function nearestPoint(sx, sy) {
 function tap(sx, sy) {
   if (!track) return;
   if (mode === "pickMap") {
-    pairs.push({ i: pendingI, q: { x: (sx - view.x) / view.k, y: (sy - view.y) / view.k } });
+    pairs.push({ id: Math.random().toString(36).slice(2, 8), i: pendingI, q: { x: (sx - view.x) / view.k, y: (sy - view.y) / view.k } });
     pendingI = -1; mode = "idle";
     solvePairs(); refresh();
     return;
@@ -588,7 +830,7 @@ $("pairBtn").addEventListener("click", () => {
   draw();
 });
 $("undoBtn").addEventListener("click", () => { pairs.pop(); solvePairs(); refresh(); });
-$("fitBtn").addEventListener("click", fitView);
+$("fitBtn").addEventListener("click", () => (zoomLeg && !$("zoom").hidden ? fitLeg(zoomLeg) : fitView()));
 
 /* ---------- 色分けの設定 ---------- */
 
@@ -702,9 +944,12 @@ function refreshRangeLabels() {
   const { t, d, hasTime } = track;
   const lbl = i => hasTime ? `${fmtDur(t[i])}（${(d[i] / 1000).toFixed(2)}km）` : `${(d[i] / 1000).toFixed(2)}km`;
   $("aLbl").textContent = lbl(ra); $("bLbl").textContent = lbl(rb);
-  const km = (d[rb] - d[ra]) / 1000, sec = hasTime ? t[rb] - t[ra] : NaN;
+  $("summary").innerHTML = statTiles(ra, rb);
+}
+function statTiles(a, b) {
+  const { t, d, hasTime } = track, km = (d[b] - d[a]) / 1000, sec = hasTime ? t[b] - t[a] : NaN;
   const tiles = [["距離", `${km.toFixed(2)}km`], ["時間", hasTime ? fmtDur(sec) : "--"], ["平均", hasTime && km > 0 ? `${fmtPace(km / sec * 3600)}/km` : "--"]];
-  $("summary").innerHTML = tiles.map(([k, v]) => `<div class="tile"><span class="k">${k}</span><span class="v">${v}</span></div>`).join("");
+  return tiles.map(([k, v]) => `<div class="tile"><span class="k">${k}</span><span class="v">${v}</span></div>`).join("");
 }
 
 function onRange(e) {
@@ -731,7 +976,7 @@ function refresh() {
   $("pairBtn").disabled = !(track && img);
   $("undoBtn").disabled = !pairs.length;
   $("alignMsg").textContent = alignText();
-  exportFile = null; syncExport();
+  exportFile = null; syncExport(); syncSave();
   refreshRangeLabels(); renderLegend(); showProbe(); draw();
 }
 
@@ -739,26 +984,39 @@ function refresh() {
 
 function loadMsg(text, err) { $("loadMsg").textContent = text; $("loadMsg").className = err ? "hint err" : "hint"; }
 
-$("imgFile").addEventListener("change", e => {
+function loadImage(src) {
+  return new Promise((res, rej) => { const im = new Image(); im.onload = () => res(im); im.onerror = rej; im.src = src; });
+}
+function canvasBlob(c, type, q) { return new Promise(r => c.toBlob(r, type, q)); }
+
+// 大きな写真は長い辺 MAX_MAP px に縮めてから使う（保存容量と描画の重さを抑える）
+$("imgFile").addEventListener("change", async e => {
   const f = e.target.files[0];
   if (!f) return;
-  const url = URL.createObjectURL(f), im = new Image();
-  im.onload = () => {
-    img = im; W = im.naturalWidth; H = im.naturalHeight;
+  try {
+    let im = await loadImage(URL.createObjectURL(f)), blob = f;
+    const s = Math.min(1, MAX_MAP / Math.max(im.naturalWidth, im.naturalHeight));
+    if (s < 1 || f.size > 2.5e6) {
+      const c = document.createElement("canvas");
+      c.width = Math.round(im.naturalWidth * s); c.height = Math.round(im.naturalHeight * s);
+      c.getContext("2d").drawImage(im, 0, 0, c.width, c.height);
+      blob = await canvasBlob(c, "image/jpeg", .88);
+      im = await loadImage(URL.createObjectURL(blob));
+    }
+    img = im; W = im.naturalWidth; H = im.naturalHeight; mapBlob = blob; mapDirty = true;
     $("imgLabel").classList.add("done");
     pairs = []; mode = "idle"; pendingI = -1;
     if (track) fitTrack();
     fitView(); refresh();
-    loadMsg(`地図：${f.name}（${W}×${H}px）`);
-  };
-  im.onerror = () => loadMsg("画像を読めませんでした。JPEG か PNG で試してください。", true);
-  im.src = url;
+    loadMsg(`地図：${f.name}（${W}×${H}px、${Math.round(blob.size / 1024)}KB）`);
+  } catch { loadMsg("画像を読めませんでした。JPEG か PNG で試してください。", true); }
 });
 
 $("gpxFile").addEventListener("change", async e => {
   const f = e.target.files[0];
   if (!f) return;
   try {
+    route.activityId = null;
     setTrack(parseGpx(await f.text(), f.name.replace(/\.gpx$/i, "")));
     loadMsg(`GPX：${f.name}（${track.n}点）`);
     for (const b of $("icuList").children) b.setAttribute("aria-pressed", "false");
@@ -778,14 +1036,17 @@ async function icu(path) {
   return res;
 }
 
-async function loadActivity(id, label) {
+async function loadActivity(a, label) {
   loadMsg("GPXを取得中…");
   try {
-    const text = await (await icu(`/activity/${encodeURIComponent(id)}/gpx-file`)).text();
+    const text = await (await icu(`/activity/${encodeURIComponent(a.id)}/gpx-file`)).text();
     if (!text.includes("<trkpt")) throw new Error("この記録には位置情報がありません。");
+    route.activityId = String(a.id);
+    if (a.start_date_local) $("raceDate").value = a.start_date_local.slice(0, 10);
+    if (!$("title").value && a.name) $("title").value = a.name;
     setTrack(parseGpx(text, label));
     loadMsg(`GPX：${label}（${track.n}点）`);
-    for (const b of $("icuList").children) b.setAttribute("aria-pressed", String(b.dataset.id === String(id)));
+    for (const b of $("icuList").children) b.setAttribute("aria-pressed", String(b.dataset.id === String(a.id)));
   } catch (err) { loadMsg(err.message, true); }
 }
 
@@ -808,14 +1069,15 @@ async function loadIcuList() {
       const b = document.createElement("button");
       b.type = "button"; b.dataset.id = a.id; b.setAttribute("aria-pressed", "false");
       b.innerHTML = `<b>${label}</b><span>${((a.distance || 0) / 1000).toFixed(1)}km ・ ${Math.round((a.moving_time || 0) / 60)}分</span>`;
-      b.addEventListener("click", () => loadActivity(a.id, `${label} ${a.name || ""}`.trim()));
+      b.addEventListener("click", () => loadActivity(a, `${label} ${a.name || ""}`.trim()));
       box.appendChild(b);
     }
-    // 練習メモの「ルート図で見る」から来たときは、その記録を開く
-    const m = location.hash.match(/^#act-(.+)$/);
+    // 練習メモから「#act-<id>」付きで来たときは、その記録を開く
+    const m = startHash.match(/^#act-(.+)$/);
     if (m) {
       const id = decodeURIComponent(m[1]), b = [...box.children].find(x => x.dataset.id === id);
-      if (b) b.click(); else loadActivity(id, id);
+      showView("edit");
+      if (b) b.click(); else loadActivity({ id }, id);
     }
   } catch (err) { box.innerHTML = ""; loadMsg(err.message, true); }
 }
@@ -828,7 +1090,7 @@ function drawLegend(c, cw, ch) {
   const rows = [];
   for (let b = th.length; b >= 0; b--) rows.push([cols[b], bandLabel(b), track.hasTime ? `${Math.round(time[b] / total * 100)}%` : ""]);
   const { t, d, hasTime } = track;
-  const title = `${track.name}  ${((d[rb] - d[ra]) / 1000).toFixed(2)}km${hasTime ? "  " + fmtDur(t[rb] - t[ra]) : ""}`;
+  const title = `${$("title").value || track.name}  ${((d[rb] - d[ra]) / 1000).toFixed(2)}km${hasTime ? "  " + fmtDur(t[rb] - t[ra]) : ""}`;
   c.font = `700 ${fs}px "Zen Kaku Gothic New", "Hiragino Sans", sans-serif`;
   const w = Math.max(c.measureText(title).width, ...rows.map(r => c.measureText(r[1] + "  " + r[2]).width + fs * 1.6)) + pad_ * 2;
   const h = row * (rows.length + 1) + pad_ * 2;
@@ -848,7 +1110,7 @@ function drawLegend(c, cw, ch) {
 function syncExport() {
   const btn = $("expBtn");
   btn.disabled = !track;
-  if (!exportFile) { btn.textContent = "画像を作る"; btn.classList.remove("ready"); }
+  if (!exportFile) btn.textContent = "画像を作る";
 }
 
 async function makeImage() {
@@ -863,9 +1125,9 @@ async function makeImage() {
     x.setTransform(1, 0, 0, 1, 0, 0);
     drawLegend(x, c.width, c.height);
     const type = img ? "image/jpeg" : "image/png";
-    const blob = await new Promise(r => c.toBlob(r, type, .92));
+    const blob = await canvasBlob(c, type, .92);
     if (!blob) throw new Error("画像を作れませんでした。地図の画像が大きすぎるかもしれません。");
-    const base = track.name.replace(/[\\/:*?"<>|\s（）]+/g, "_").replace(/^_+|_+$/g, "") || "route";
+    const base = ($("title").value || track.name).replace(/[\\/:*?"<>|\s（）]+/g, "_").replace(/^_+|_+$/g, "") || "route";
     exportFile = new File([blob], `${base}_速度.${img ? "jpg" : "png"}`, { type });
     const canShare = !!navigator.canShare?.({ files: [exportFile] });
     btn.textContent = canShare ? "保存・共有する" : "画像を保存";
@@ -891,15 +1153,405 @@ async function deliverImage() {
 }
 $("expBtn").addEventListener("click", () => (exportFile ? deliverImage() : makeImage()));
 
+/* ---------- 保存先（Supabase） ---------- */
+
+let sb = null, session = null;
+
+function loadSbCfg() { try { return JSON.parse(localStorage.getItem("routeSb")) || {}; } catch { return {}; } }
+function storeSbCfg(c) { try { localStorage.setItem("routeSb", JSON.stringify(c)); } catch {} }
+
+function sbMsg(text, kind) { $("sbMsg").textContent = text; $("sbMsg").className = "hint" + (kind ? " " + kind : ""); }
+
+function makeClient(c) {
+  if (!c.url || !c.key || !window.supabase) return null;
+  try { return window.supabase.createClient(c.url, c.key); } catch { return null; }
+}
+
+async function initSb() {
+  const c = loadSbCfg();
+  $("sbUrl").value = c.url || ""; $("sbKey").value = c.key || ""; $("sbEmail").value = c.email || "";
+  if (!window.supabase) { sbMsg("保存の機能を読み込めませんでした。通信を確認して再読み込みしてください。", "err"); return; }
+  sb = makeClient(c);
+  if (sb) session = (await sb.auth.getSession()).data.session;
+  afterAuth();
+}
+
+function afterAuth() {
+  $("loginBtn").hidden = !!session; $("logoutBtn").hidden = !session;
+  if (session) sbMsg(`ログイン中：${session.user.email || ""}`, "ok");
+  else { $("setup").open = true; if (!$("sbMsg").textContent) sbMsg("保存するには、Supabase の設定とログインが必要です。"); }
+  syncSave(); loadList();
+}
+
+$("loginBtn").addEventListener("click", async () => {
+  const c = { url: $("sbUrl").value.trim().replace(/\/+$/, ""), key: $("sbKey").value.trim(), email: $("sbEmail").value.trim() };
+  if (!c.url || !c.key || !c.email || !$("sbPass").value) { sbMsg("4つとも入力してください。", "err"); return; }
+  storeSbCfg(c);
+  sb = makeClient(c);
+  if (!sb) { sbMsg("Project URL の形が正しくありません。", "err"); return; }
+  sbMsg("ログイン中…");
+  const { data, error } = await sb.auth.signInWithPassword({ email: c.email, password: $("sbPass").value });
+  if (error) { sbMsg(`ログインできませんでした：${error.message}`, "err"); return; }
+  $("sbPass").value = "";
+  session = data.session; $("setup").open = false;
+  afterAuth();
+});
+$("logoutBtn").addEventListener("click", async () => { await sb?.auth.signOut(); session = null; sbMsg(""); afterAuth(); });
+
+const folder = id => `${session.user.id}/${id}/`;
+
+function syncSave() {
+  $("saveBtn").disabled = !track || !session;
+  if (!session) $("saveMsg").textContent = "保存するには、一覧の下の「保存先の設定」でログインしてください。";
+  else if ($("saveMsg").textContent.startsWith("保存するには")) $("saveMsg").textContent = "";
+  $("saveBtn").textContent = route.id ? "上書き保存して反省へ" : "保存して反省を書く";
+}
+
+function collectSettings() {
+  return { pairs, ra, rb, th, colorOverride, A, B, W, H, smooth: +$("smooth").value, lw: +$("lw").value, op: +$("op").value, halo: $("halo").checked };
+}
+
+async function makeThumb() {
+  const s = 480 / Math.max(W, H), c = document.createElement("canvas");
+  c.width = Math.round(W * s); c.height = Math.round(H * s);
+  const x = c.getContext("2d");
+  x.setTransform(s, 0, 0, s, 0, 0);
+  drawMap(x); strokeTrack(x, 3 / s, ra, rb); drawCourse(x, 6 / s, 1.2 / s);
+  return canvasBlob(c, "image/jpeg", .8);
+}
+
+async function upload(path, blob, type) {
+  const { error } = await sb.storage.from("maps").upload(path, blob, { upsert: true, contentType: type });
+  if (error) throw new Error(`ファイルを保存できませんでした：${error.message}`);
+}
+
+$("saveBtn").addEventListener("click", async () => {
+  const btn = $("saveBtn"), msg = $("saveMsg");
+  btn.disabled = true; msg.className = "hint"; msg.textContent = "保存中…";
+  try {
+    route.title = $("title").value.trim() || track.name;
+    route.date = $("raceDate").value || null;
+    const row = { title: route.title, race_date: route.date, activity_id: route.activityId, settings: collectSettings(), summary: routeSummary(), has_map: !!img, updated_at: new Date().toISOString() };
+    if (!route.id) {
+      const { data, error } = await sb.from("routes").insert({ ...row, notes: {} }).select("id").single();
+      if (error) throw new Error(error.message);
+      route.id = data.id; trackDirty = true; mapDirty = !!img;
+    } else {
+      const { error } = await sb.from("routes").update(row).eq("id", route.id);
+      if (error) throw new Error(error.message);
+    }
+    const dir = folder(route.id);
+    if (trackDirty) { await upload(dir + "track.json", new Blob([trackJson(track)], { type: "application/json" }), "application/json"); trackDirty = false; }
+    if (mapDirty && mapBlob) { await upload(dir + "map", mapBlob, mapBlob.type || "image/jpeg"); mapDirty = false; }
+    await upload(dir + "thumb.jpg", await makeThumb(), "image/jpeg");
+    msg.textContent = "";
+    openReview();
+  } catch (err) {
+    msg.className = "hint err"; msg.textContent = `保存できませんでした：${err.message}`;
+  } finally { syncSave(); }
+});
+
+/* ---------- 一覧 ---------- */
+
+async function loadList() {
+  const box = $("routeList"), msg = $("listMsg");
+  if (!sb || !session) { box.innerHTML = ""; msg.textContent = "下の「保存先の設定」でログインすると、保存したルート図がここに並びます。"; return; }
+  msg.textContent = "読み込み中…";
+  const { data, error } = await sb.from("routes").select("id,title,race_date,summary,updated_at")
+    .order("race_date", { ascending: false, nullsFirst: false }).order("created_at", { ascending: false });
+  if (error) { msg.textContent = `一覧を読めませんでした：${error.message}`; return; }
+  msg.textContent = data.length ? "" : "まだ保存したルート図はありません。「＋ 新しく作る」から始めてください。";
+  let urls = {};
+  if (data.length) {
+    const { data: signed } = await sb.storage.from("maps").createSignedUrls(data.map(r => folder(r.id) + "thumb.jpg"), 3600);
+    (signed || []).forEach((s, k) => { if (s.signedUrl) urls[data[k].id] = s.signedUrl; });
+  }
+  box.innerHTML = "";
+  for (const r of data) {
+    const s = r.summary || {}, b = document.createElement("button");
+    b.type = "button"; b.className = "card";
+    const chips = [s.legs ? `<span class="chip ${s.done >= s.legs ? "done" : "todo"}">反省 ${s.done || 0}/${s.legs}</span>` : "",
+      s.loss ? `<span class="chip loss">ロス ${fmtDur(s.loss)}</span>` : ""].join("");
+    b.innerHTML = `<span class="thumb" style="${urls[r.id] ? `background-image:url('${urls[r.id]}')` : ""}"></span>
+      <span style="min-width:0"><div class="t">${esc(r.title || "（名前なし）")}</div>
+      <div class="s">${esc(r.race_date || "")}${s.km != null ? ` ・ ${s.km}km` : ""}${s.sec ? ` ・ ${fmtDur(s.sec)}` : ""}</div>
+      <div class="chips">${chips}</div></span>`;
+    b.addEventListener("click", () => openRoute(r.id));
+    box.appendChild(b);
+  }
+}
+
+async function openRoute(id) {
+  const msg = $("listMsg");
+  msg.textContent = "開いています…";
+  try {
+    const { data: row, error } = await sb.from("routes").select("*").eq("id", id).single();
+    if (error) throw new Error(error.message);
+    const dir = folder(id);
+    const tj = await sb.storage.from("maps").download(dir + "track.json");
+    if (tj.error) throw new Error("軌跡のファイルが見つかりません。");
+    const tr = trackFromJson(JSON.parse(await tj.data.text()));
+    let im = null, blob = null;
+    if (row.has_map) {
+      const m = await sb.storage.from("maps").download(dir + "map");
+      if (!m.error) { blob = m.data; im = await loadImage(URL.createObjectURL(blob)); }
+    }
+    const s = row.settings || {};
+    img = im; mapBlob = blob; W = s.W || im?.naturalWidth || 2000; H = s.H || im?.naturalHeight || 2000;
+    track = tr; trackDirty = false; mapDirty = false;
+    route = { id, title: row.title, date: row.race_date || "", activityId: row.activity_id, notes: row.notes || {} };
+    applySettings(s);
+    msg.textContent = "";
+    openReview();
+  } catch (err) { msg.textContent = `開けませんでした：${err.message}`; }
+}
+
+function applySettings(s) {
+  pairs = s.pairs || []; th = s.th || th; colorOverride = s.colorOverride || {};
+  ra = s.ra ?? 0; rb = Math.min(s.rb ?? track.n - 1, track.n - 1);
+  for (const [id, v] of [["smooth", s.smooth], ["lw", s.lw], ["op", s.op]]) if (v != null) $(id).value = v;
+  if (s.halo != null) $("halo").checked = s.halo;
+  $("rangeA").max = $("rangeB").max = track.n - 1; $("rangeA").value = ra; $("rangeB").value = rb;
+  $("title").value = route.title; $("raceDate").value = route.date || "";
+  $("imgLabel").classList.toggle("done", !!img); $("gpxLabel").classList.add("done");
+  $("bounds").value = boundsText();
+  mode = "idle"; pendingI = -1; probeI = -1;
+  refreshSliderLabels(); computeSpeed();
+  if (s.A && s.B) { A = s.A; B = s.B; project(); } else solvePairs();
+}
+
+function resetRoute() {
+  route = { id: null, title: "", date: "", activityId: null, notes: {} };
+  img = null; track = null; pairs = []; mapBlob = null; W = H = 2000; trackDirty = mapDirty = false;
+  mode = "idle"; pendingI = -1; probeI = -1;
+  $("title").value = ""; $("raceDate").value = ""; $("imgFile").value = ""; $("gpxFile").value = "";
+  $("imgLabel").classList.remove("done"); $("gpxLabel").classList.remove("done");
+  for (const b of $("icuList").children) b.setAttribute("aria-pressed", "false");
+  loadMsg(""); $("saveMsg").textContent = "";
+}
+
+/* ---------- 反省 ---------- */
+
+let saveTimer = 0;
+function saveState(text) { $("saveState").textContent = text; $("saveState").hidden = !text; }
+function scheduleNoteSave() {
+  saveState("未保存…");
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(saveNotes, 1200);
+}
+async function saveNotes() {
+  clearTimeout(saveTimer); saveTimer = 0;
+  if (!route.id || !sb) return;
+  saveState("保存中…");
+  const { error } = await sb.from("routes").update({
+    title: route.title, race_date: route.date || null, notes: route.notes, summary: routeSummary(), updated_at: new Date().toISOString(),
+  }).eq("id", route.id);
+  saveState(error ? `保存できませんでした：${error.message}` : "保存しました");
+  if (!error) setTimeout(() => { if ($("saveState").textContent === "保存しました") saveState(""); }, 1500);
+}
+// 閉じる・移動する前に書きかけを保存する
+document.addEventListener("visibilitychange", () => { if (document.hidden && saveTimer) saveNotes(); });
+
+function openReview() {
+  showView("review");
+  $("rvTitle").value = route.title; $("rvDate").value = route.date || "";
+  try { history.replaceState(null, "", "#r-" + route.id); } catch {}
+  renderReview();
+}
+
+function legRowText(l, n) {
+  const st = legStats(l.from.i, l.to.i);
+  return `${Number.isFinite(st.sec) ? fmtDur(st.sec) : ""}${Number.isFinite(st.pace) ? " ・ " + fmtPace(st.pace) + "/km" : ""}`;
+}
+function legChip(n) {
+  if (!hasNote(n)) return '<span class="chip todo">未記入</span>';
+  return n.loss ? `<span class="chip loss">ロス${fmtDur(n.loss)}</span>` : '<span class="chip done">記入済</span>';
+}
+
+function renderReview() {
+  $("rvStats").innerHTML = statTiles(ra, rb);
+  const box = $("legsBox"), L = legs();
+  box.innerHTML = "";
+  L.forEach(l => {
+    const det = document.createElement("details");
+    det.className = "leg";
+    det.innerHTML = `<summary><span class="no">${esc(l.name)}</span><span class="ls">${legRowText(l)}</span><span class="st">${legChip(route.notes[l.key])}</span></summary>`;
+    det.addEventListener("toggle", () => { if (det.open && !det.querySelector(".legbody")) buildLegBody(det, l); });
+    box.appendChild(det);
+  });
+  if (L.length === 1) box.insertAdjacentHTML("beforeend", '<div class="hint">合わせ点がないので、スタートからゴールまでが1レッグです。「地図・合わせ点を直す」でコントロールに合わせ点を置くと、レッグに分かれます。</div>');
+  // 合わせ点を変えてレッグが合わなくなった反省も消さずに見せる
+  const keys = new Set(L.map(l => l.key));
+  const orphans = Object.entries(route.notes).filter(([k, n]) => !keys.has(k) && hasNote(n));
+  if (orphans.length) {
+    box.insertAdjacentHTML("beforeend", `<div class="hint">合わせ点を変えたため、対応するレッグがなくなった反省（${orphans.length}件）：</div>` +
+      orphans.map(([k, n]) => `<div class="tile"><span class="k">${n.loss ? "ロス" + fmtDur(n.loss) + " ・ " : ""}${esc((n.tags || []).join("・"))}</span><span style="white-space:pre-wrap">${esc([n.text, n.next].filter(Boolean).join("\n→ "))}</span></div>`).join(""));
+  }
+  renderReviewSummary();
+}
+
+function buildLegBody(det, l) {
+  const n = route.notes[l.key] || (route.notes[l.key] = { loss: 0, tags: [], text: "", next: "" });
+  const st = legStats(l.from.i, l.to.i), cols = bandColors(), tot = st.time.reduce((s, v) => s + v, 0) || 1;
+  const body = document.createElement("div");
+  body.className = "legbody";
+  const parts = [
+    Number.isFinite(st.sec) ? fmtDur(st.sec) : null,
+    `${Math.round(st.dist)}m（直線${Math.round(st.straight)}m${Number.isFinite(st.ratio) ? `・迂回率${st.ratio.toFixed(2)}` : ""}）`,
+    Number.isFinite(st.climb) ? `↑${Math.round(st.climb)}m` : null,
+    Number.isFinite(st.pace) ? `${fmtPace(st.pace)}/km` : null,
+  ].filter(Boolean);
+  body.innerHTML = `<canvas class="crop" aria-label="${esc(l.name)}の拡大図"></canvas>
+    <div class="legstats">${parts.join(" ・ ")}</div>
+    <div class="bandbar">${st.time.map((t, b) => t > 0 ? `<i style="width:${t / tot * 100}%;background:${cols[b]}" title="${esc(bandLabel(b))}"></i>` : "").reverse().join("")}</div>
+    <div class="loss">ロス <input type="text" inputmode="numeric" placeholder="0" value="${n.loss ? (n.loss >= 60 ? fmtDur(n.loss) : n.loss) : ""}"> <span class="hint" style="margin:0">秒（1:30 のようにも書けます）</span></div>
+    <div class="tags">${[...TAGS, GOOD].map(t => `<button type="button" class="${t === GOOD ? "good" : ""}" aria-pressed="${n.tags.includes(t)}">${esc(t)}</button>`).join("")}</div>
+    <label>反省（何が起きたか）<textarea data-k="text">${esc(n.text)}</textarea></label>
+    <label>次はこうする<textarea data-k="next" style="min-height:52px">${esc(n.next)}</textarea></label>`;
+  det.appendChild(body);
+
+  const changed = () => { det.querySelector(".st").innerHTML = legChip(n); renderReviewSummary(); scheduleNoteSave(); };
+  const lossIn = body.querySelector(".loss input");
+  lossIn.addEventListener("input", () => {
+    const v = parseDur(lossIn.value);
+    lossIn.style.borderColor = Number.isFinite(v) ? "" : "var(--warn)";
+    if (Number.isFinite(v)) { n.loss = v; changed(); }
+  });
+  body.querySelectorAll(".tags button").forEach(b => b.addEventListener("click", () => {
+    const t = b.textContent, on = !n.tags.includes(t);
+    n.tags = on ? [...n.tags, t] : n.tags.filter(x => x !== t);
+    b.setAttribute("aria-pressed", String(on)); changed();
+  }));
+  body.querySelectorAll("textarea").forEach(ta => ta.addEventListener("input", () => { n[ta.dataset.k] = ta.value; changed(); }));
+  const crop = body.querySelector(".crop");
+  crop.addEventListener("click", () => openZoom(l));
+  requestAnimationFrame(() => drawCrop(crop, l));
+}
+
+// レッグの軌跡と両端のコントロールを囲む範囲（4:3、余白つき）
+function legBox(l, aspect = 4 / 3) {
+  const { ix, iy } = track;
+  let x0 = Math.min(l.from.x, l.to.x), x1 = Math.max(l.from.x, l.to.x), y0 = Math.min(l.from.y, l.to.y), y1 = Math.max(l.from.y, l.to.y);
+  for (let i = l.from.i; i <= l.to.i; i++) { x0 = Math.min(x0, ix[i]); x1 = Math.max(x1, ix[i]); y0 = Math.min(y0, iy[i]); y1 = Math.max(y1, iy[i]); }
+  const minSize = Math.max(W, H) * .08;
+  let w = Math.max(x1 - x0, minSize) * 1.3, h = Math.max(y1 - y0, minSize) * 1.3;
+  if (w / h < aspect) w = h * aspect; else h = w / aspect;
+  const cx = (x0 + x1) / 2, cy = (y0 + y1) / 2;
+  return [cx - w / 2, cy - h / 2, cx + w / 2, cy + h / 2];
+}
+
+function drawCrop(c, l) {
+  const dpr = window.devicePixelRatio || 1, cw = c.clientWidth || 320;
+  c.width = Math.round(cw * dpr); c.height = Math.round(cw * .75 * dpr);
+  const [x0, y0, x1] = legBox(l), s = c.width / (x1 - x0), x = c.getContext("2d"), px = dpr / s;
+  x.fillStyle = "#ffffff"; x.fillRect(0, 0, c.width, c.height);
+  x.setTransform(s, 0, 0, s, -x0 * s, -y0 * s);
+  drawMap(x);
+  strokeTrack(x, Number($("lw").value) * px, ra, rb, true);
+  strokeTrack(x, Number($("lw").value) * px, l.from.i, l.to.i);
+  drawCourse(x, 13 * px, 2.2 * px, { only: l.key });
+}
+
+function renderReviewSummary() {
+  const L = legs(), box = $("rvSummary");
+  const rows = L.map(l => ({ l, st: legStats(l.from.i, l.to.i), n: route.notes[l.key] }));
+  const loss = rows.reduce((s, r) => s + (r.n?.loss || 0), 0);
+  const sec = track.hasTime ? track.t[rb] - track.t[ra] : NaN;
+  const tagCount = {};
+  rows.forEach(r => (r.n?.tags || []).forEach(t => { tagCount[t] = (tagCount[t] || 0) + 1; }));
+  const tiles = [
+    ["ロス合計", fmtDur(loss)],
+    ["ロスなしなら", Number.isFinite(sec) ? fmtDur(sec - loss) : "--"],
+    ["記入", `${rows.filter(r => hasNote(r.n)).length}/${rows.length}`],
+  ];
+  box.innerHTML = `<div class="summary">${tiles.map(([k, v]) => `<div class="tile"><span class="k">${k}</span><span class="v">${v}</span></div>`).join("")}</div>
+    ${Object.keys(tagCount).length ? `<div class="tags">${Object.entries(tagCount).sort((a, b) => b[1] - a[1]).map(([t, c]) => `<button type="button" class="${t === GOOD ? "good" : ""}" aria-pressed="true" tabindex="-1">${esc(t)} ${c}</button>`).join("")}</div>` : ""}
+    <div class="tablewrap"><table><thead><tr><th>レッグ</th><th>タイム</th><th>ペース</th><th>迂回率</th><th>↑</th><th>ロス</th><th>ミス</th></tr></thead><tbody>
+    ${rows.map(({ l, st, n }) => `<tr><td>${esc(l.name)}</td><td>${Number.isFinite(st.sec) ? fmtDur(st.sec) : "--"}</td><td>${Number.isFinite(st.pace) ? fmtPace(st.pace) : "--"}</td>
+      <td>${Number.isFinite(st.ratio) ? st.ratio.toFixed(2) : "--"}</td><td>${Number.isFinite(st.climb) ? Math.round(st.climb) : "--"}</td>
+      <td>${n?.loss ? fmtDur(n.loss) : ""}</td><td class="tg">${esc((n?.tags || []).join("・"))}</td></tr>`).join("")}
+    </tbody></table></div>`;
+}
+
+$("rvTitle").addEventListener("input", () => { route.title = $("rvTitle").value; $("title").value = route.title; scheduleNoteSave(); });
+$("rvDate").addEventListener("input", () => { route.date = $("rvDate").value; $("raceDate").value = route.date; scheduleNoteSave(); });
+$("rvEdit").addEventListener("click", async () => {
+  if (saveTimer) await saveNotes();
+  showView("edit");
+  requestAnimationFrame(() => { resize(); fitView(); refresh(); });
+});
+let delArmed = 0;
+$("rvDelete").addEventListener("click", async () => {
+  const b = $("rvDelete");
+  if (!delArmed) {
+    b.classList.add("armed"); b.textContent = "もう一度押すと削除";
+    delArmed = setTimeout(() => { delArmed = 0; b.classList.remove("armed"); b.textContent = "削除"; }, 3000);
+    return;
+  }
+  clearTimeout(delArmed); delArmed = 0; b.classList.remove("armed"); b.textContent = "削除";
+  clearTimeout(saveTimer); saveTimer = 0;
+  const dir = folder(route.id);
+  await sb.storage.from("maps").remove([dir + "track.json", dir + "map", dir + "thumb.jpg"]);
+  const { error } = await sb.from("routes").delete().eq("id", route.id);
+  if (error) { saveState(`削除できませんでした：${error.message}`); return; }
+  resetRoute(); showView("list"); loadList();
+});
+
+/* ---------- レッグの拡大 ---------- */
+
+// 作成画面の地図キャンバスを全画面に移して、指で拡大・移動できるようにする
+let zoomLeg = null;
+function fitLeg(l) { const [x0, y0, x1, y1] = legBox(l, cv.clientWidth / cv.clientHeight || 1); fitBox(x0, y0, x1, y1); }
+function openZoom(l) {
+  zoomLeg = l;
+  $("zoomTitle").textContent = l.name;
+  $("zoom").hidden = false;
+  $("zoom").appendChild($("stage"));
+  mode = "idle"; probeI = -1;
+  resize(); fitLeg(l);
+}
+$("zoomClose").addEventListener("click", () => {
+  $("zoom").hidden = true;
+  $("stageHome").prepend($("stage"));
+  zoomLeg = null; probeI = -1; showProbe();
+});
+
+/* ---------- 画面の切り替え ---------- */
+
+function showView(v) {
+  $("listView").hidden = v !== "list"; $("editView").hidden = v !== "edit"; $("reviewView").hidden = v !== "review";
+  $("tabList").setAttribute("aria-selected", String(v === "list"));
+  $("tabEdit").setAttribute("aria-selected", String(v === "edit"));
+  if (v !== "review") { try { history.replaceState(null, "", location.pathname); } catch {} }
+  scrollTo(0, 0);
+}
+$("tabList").addEventListener("click", async () => { if (saveTimer) await saveNotes(); showView("list"); loadList(); });
+$("tabEdit").addEventListener("click", async () => {
+  if (saveTimer) await saveNotes();
+  showView("edit");
+  requestAnimationFrame(() => { resize(); fitView(); refresh(); });
+});
+$("newBtn").addEventListener("click", () => {
+  resetRoute(); showView("edit");
+  requestAnimationFrame(() => { resize(); fitView(); refresh(); });
+});
+
 /* ---------- 起動 ---------- */
 
+// showView が URL の # を消すので、起動時の値を先に取っておく
+const startHash = location.hash;
 let savedUnit = "pace";
 try { savedUnit = localStorage.getItem("routeUnit") || "pace"; } catch {}
 setUnit(savedUnit);
 refreshSliderLabels();
 new ResizeObserver(resize).observe(cv);
+showView("list");
 refresh();
 loadIcuList();
+initSb().then(() => {
+  const m = startHash.match(/^#r-([0-9a-f-]{36})$/);
+  if (m && session) openRoute(m[1]);
+});
 </script>
 </body>
 </html>
