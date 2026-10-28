@@ -1248,7 +1248,8 @@ async function loadActivity(a, label) {
     if (!text.includes("<trkpt")) throw new Error("この記録には位置情報がありません。");
     route.activityId = String(a.id);
     if (a.start_date_local) $("raceDate").value = a.start_date_local.slice(0, 10);
-    if (!$("title").value && a.name) $("title").value = a.name;
+    // 練習名は仮の名前。あとでラップを読み込めば大会名・クラスに置き換わる
+    if (!$("title").value && a.name) $("title").value = autoTitle = a.name;
     setTrack(parseGpx(text, label));
     loadMsg(`GPX：${label}（${track.n}点）`);
     for (const b of $("icuList").children) b.setAttribute("aria-pressed", String(b.dataset.id === String(a.id)));
@@ -1257,7 +1258,14 @@ async function loadActivity(a, label) {
 
 const WD = "日月火水木金土";
 async function loadIcuList() {
-  if (!cfg.aid || !cfg.key) return;
+  if (!cfg.aid || !cfg.key) {
+    // 練習メモの「ルート図を作る」から来たのに、このブラウザに接続設定がない（ホーム画面版と Safari は別扱い）
+    if (/^#act-/.test(startHash)) {
+      showView("edit"); showStep("load");
+      loadMsg("このブラウザには Intervals.icu の接続設定がありません。このブラウザで練習メモを開いて接続設定をしてから、もう一度「ルート図を作る」を押してください。", true);
+    }
+    return;
+  }
   $("icuBox").hidden = false;
   const box = $("icuList");
   box.innerHTML = '<span class="hint">読み込み中…</span>';
