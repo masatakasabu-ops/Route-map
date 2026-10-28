@@ -305,7 +305,8 @@ td.tg { text-align: left; font-family: var(--font-body); color: var(--muted); }
         <div class="sl"><div><span>おわり（ゴール）</span><b id="bLbl"></b></div><input type="range" id="rangeB" min="0" max="1" value="1"></div>
         <div class="summary" id="summary"></div>
         <div class="sl"><div><span>速度のならし</span><b id="smLbl"></b></div><input type="range" id="smooth" min="1" max="30" value="8"></div>
-        <div class="sl"><div><span>線の太さ</span><b id="lwLbl"></b></div><input type="range" id="lw" min="2" max="14" value="5"></div>
+        <div class="sl"><div><span>線の太さ</span><b id="lwLbl"></b></div><input type="range" id="lw" min="1" max="10" step="0.5" value="3"></div>
+        <div class="sl"><div><span>線の濃さ（透過）</span><b id="alLbl"></b></div><input type="range" id="alpha" min="15" max="100" value="100"></div>
         <div class="sl"><div><span>地図の濃さ</span><b id="opLbl"></b></div><input type="range" id="op" min="20" max="100" value="100"></div>
         <label class="check"><input type="checkbox" id="halo" checked>線を白で縁取る（地図の色と見分けやすく）</label>
       </div>
@@ -695,12 +696,18 @@ function strokeTrack(c, lw, a, b, faint) {
   const poly = () => { c.beginPath(); c.moveTo(ix[a], iy[a]); for (let i = a + 1; i <= b; i++) c.lineTo(ix[i], iy[i]); };
   c.lineCap = "round"; c.lineJoin = "round";
   if (faint) { c.strokeStyle = "rgba(70,70,70,.35)"; c.lineWidth = lw * .6; poly(); c.stroke(); return; }
-  if ($("halo").checked) { c.strokeStyle = "rgba(255,255,255,.9)"; c.lineWidth = lw * 1.8; poly(); c.stroke(); }
+  // 透過すると線の下の地図が透けて見える（縁取りも同じだけ透かす）
+  c.save();
+  c.globalAlpha = Number($("alpha").value) / 100;
+  if ($("halo").checked) { c.strokeStyle = "rgba(255,255,255,.9)"; c.lineWidth = lw * 1.6; poly(); c.stroke(); }
   c.lineWidth = lw;
-  if (!track.hasTime) { c.strokeStyle = "#c1121f"; poly(); c.stroke(); return; }
-  const cols = bandColors(), paths = cols.map(() => new Path2D());
-  for (let i = a; i < b; i++) { const p = paths[band[i]]; p.moveTo(ix[i], iy[i]); p.lineTo(ix[i + 1], iy[i + 1]); }
-  paths.forEach((p, k) => { c.strokeStyle = cols[k]; c.stroke(p); });
+  if (!track.hasTime) { c.strokeStyle = "#c1121f"; poly(); c.stroke(); }
+  else {
+    const cols = bandColors(), paths = cols.map(() => new Path2D());
+    for (let i = a; i < b; i++) { const p = paths[band[i]]; p.moveTo(ix[i], iy[i]); p.lineTo(ix[i + 1], iy[i + 1]); }
+    paths.forEach((p, k) => { c.strokeStyle = cols[k]; c.stroke(p); });
+  }
+  c.restore();
 }
 
 // コース図の記号：スタートの三角、コントロールの円と番号、ゴールの二重丸、レッグの線
@@ -725,6 +732,7 @@ function drawCourse(c, r, w, opts = {}) {
       c.beginPath(); c.arc(p.x, p.y, r * .7, 0, Math.PI * 2); c.stroke();
     } else {
       c.arc(p.x, p.y, r, 0, Math.PI * 2); c.stroke();
+      if (opts.labels === false) return;
       c.font = `700 ${r * 1.5}px "JetBrains Mono", monospace`; c.textBaseline = "bottom";
       c.lineWidth = w * 1.6; c.strokeStyle = "rgba(255,255,255,.95)"; c.strokeText(p.label, p.x + r * .8, p.y - r * .6);
       c.fillStyle = col; c.fillText(p.label, p.x + r * .8, p.y - r * .6);
@@ -733,12 +741,12 @@ function drawCourse(c, r, w, opts = {}) {
   });
 }
 
-// 画像座標で描く。lw は画像座標での線の太さ
+// 書き出す画像用。画像座標で描き、lw は画像座標での線の太さ。コントロール番号は入れない
 function drawScene(c, lw) {
   drawMap(c);
   if (!track) return;
   strokeTrack(c, lw, ra, rb);
-  drawCourse(c, lw * 2.6, lw * .5);
+  drawCourse(c, lw * 3.5, lw * .6, { labels: false });
 }
 
 function render() {
@@ -1109,9 +1117,10 @@ function refreshSliderLabels() {
   $("smLbl").textContent = `前後${$("smooth").value}秒`;
   $("lwLbl").textContent = `${$("lw").value}px`;
   $("opLbl").textContent = `${$("op").value}%`;
+  $("alLbl").textContent = `${$("alpha").value}%`;
 }
 $("smooth").addEventListener("input", () => { refreshSliderLabels(); computeSpeed(); renderLegend(); showProbe(); exportFile = null; syncExport(); draw(); });
-for (const id of ["lw", "op", "halo"]) $(id).addEventListener("input", () => { refreshSliderLabels(); exportFile = null; syncExport(); draw(); });
+for (const id of ["lw", "op", "alpha", "halo"]) $(id).addEventListener("input", () => { refreshSliderLabels(); exportFile = null; syncExport(); draw(); });
 
 function refresh() {
   bubble(bubbleText());
@@ -1352,7 +1361,7 @@ function syncSave() {
 }
 
 function collectSettings() {
-  return { pairs, ctrls: ctrls.map(c => ({ id: c.id, q: c.q, ...(c.fix != null ? { fix: c.fix } : {}) })), ra, rb, th, colorOverride, A, B, W, H, smooth: +$("smooth").value, lw: +$("lw").value, op: +$("op").value, halo: $("halo").checked };
+  return { pairs, ctrls: ctrls.map(c => ({ id: c.id, q: c.q, ...(c.fix != null ? { fix: c.fix } : {}) })), ra, rb, th, colorOverride, A, B, W, H, smooth: +$("smooth").value, lw: +$("lw").value, op: +$("op").value, alpha: +$("alpha").value, halo: $("halo").checked };
 }
 
 async function makeThumb() {
@@ -1360,7 +1369,7 @@ async function makeThumb() {
   c.width = Math.round(W * s); c.height = Math.round(H * s);
   const x = c.getContext("2d");
   x.setTransform(s, 0, 0, s, 0, 0);
-  drawMap(x); strokeTrack(x, 3 / s, ra, rb); drawCourse(x, 6 / s, 1.2 / s);
+  drawMap(x); strokeTrack(x, 2.5 / s, ra, rb); drawCourse(x, 6 / s, 1.2 / s, { labels: false });
   return canvasBlob(c, "image/jpeg", .8);
 }
 
@@ -1457,7 +1466,7 @@ function applySettings(s) {
     : [...pairs].sort((a, b) => a.i - b.i).map(p => ({ id: p.id, q: { ...p.q } }));
   history = []; insertAt = -1;
   ra = s.ra ?? 0; rb = Math.min(s.rb ?? track.n - 1, track.n - 1);
-  for (const [id, v] of [["smooth", s.smooth], ["lw", s.lw], ["op", s.op]]) if (v != null) $(id).value = v;
+  for (const [id, v] of [["smooth", s.smooth], ["lw", s.lw], ["op", s.op], ["alpha", s.alpha ?? 100]]) if (v != null) $(id).value = v;
   if (s.halo != null) $("halo").checked = s.halo;
   $("rangeA").max = $("rangeB").max = track.n - 1; $("rangeA").value = ra; $("rangeB").value = rb;
   $("title").value = route.title; $("raceDate").value = route.date || "";
