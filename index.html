@@ -199,7 +199,12 @@ td.tg { text-align: left; font-family: var(--font-body); color: var(--muted); }
 .zoom .zh { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
 .zoom .zh b { font-family: var(--font-num); color: var(--overprint); }
 .zoom .stage { height: auto; }
-.zoom #pairBtn, .zoom #undoBtn { display: none; }
+.zoom #pairBtn, .zoom #ctrlBtn, .zoom #undoBtn { display: none; }
+.cl { display: grid; grid-template-columns: 2em minmax(0, 1fr) auto auto; gap: 8px; align-items: center; font-size: .85rem; }
+.cl b { font-family: var(--font-num); color: var(--overprint); font-size: 1.05rem; text-align: center; }
+.cl span { font-family: var(--font-num); min-width: 0; }
+.cl .warn { color: var(--warn); }
+.cl .ghost { padding: 5px 10px; font-size: .8rem; }
 </style>
 </head>
 <body>
@@ -247,7 +252,7 @@ td.tg { text-align: left; font-family: var(--font-body); color: var(--muted); }
         <label class="filebtn" id="gpxLabel">GPXファイル<small>.gpx</small><input type="file" id="gpxFile" accept=".gpx,application/gpx+xml,application/xml,text/xml"></label>
       </div>
       <div id="icuBox" hidden>
-        <div class="hint">または Intervals.icu の記録（直近14日）から選ぶ</div>
+        <div class="hint">または Intervals.icu の記録（直近7日）から選ぶ</div>
         <div id="icuList" class="icu"></div>
       </div>
       <div class="hint" id="loadMsg"></div>
@@ -259,7 +264,8 @@ td.tg { text-align: left; font-family: var(--font-body); color: var(--muted); }
         <div class="empty" id="empty">地図の画像と GPX を読み込むと、ここに重ねて表示します</div>
         <div class="bubble" id="bubble" hidden></div>
         <div class="toolbar">
-          <button class="ghost" type="button" id="pairBtn" disabled>合わせ点を追加</button>
+          <button class="ghost" type="button" id="pairBtn" disabled>合わせ点</button>
+          <button class="ghost" type="button" id="ctrlBtn" disabled>コントロール</button>
           <button class="ghost" type="button" id="undoBtn" disabled>1つ戻す</button>
           <button class="ghost" type="button" id="fitBtn">全体</button>
         </div>
@@ -269,7 +275,14 @@ td.tg { text-align: left; font-family: var(--font-body); color: var(--muted); }
     </section>
 
     <section>
-      <h2>2. 速度の色分け</h2>
+      <h2>2. コントロール（レッグの区切り）</h2>
+      <div class="hint" style="margin-top:0">地図に合わせ終わったら「コントロール」を押し、1, 2, 3… の順に地図の丸の中心をタップします。通過した時刻は軌跡から自動で探します。合わせ点の青い十字の近くをタップすると、その位置をそのまま使います。</div>
+      <div class="stack" id="ctrlList" style="margin-top:8px"></div>
+      <div class="row" style="margin-top:8px"><button class="ghost" type="button" id="pairsToCtrl" disabled>合わせ点をすべてコントロールにする</button></div>
+    </section>
+
+    <section>
+      <h2>3. 速度の色分け</h2>
       <div class="seg" role="group" aria-label="単位">
         <button type="button" data-unit="pace">ペース（分/km）</button>
         <button type="button" data-unit="kmh">速度（km/h）</button>
@@ -286,7 +299,7 @@ td.tg { text-align: left; font-family: var(--font-body); color: var(--muted); }
     </section>
 
     <section>
-      <h2>3. 区間と表示</h2>
+      <h2>4. 区間と表示</h2>
       <div class="sliders">
         <div class="sl"><div><span>はじめ（スタート）</span><b id="aLbl"></b></div><input type="range" id="rangeA" min="0" max="1" value="0"></div>
         <div class="sl"><div><span>おわり（ゴール）</span><b id="bLbl"></b></div><input type="range" id="rangeB" min="0" max="1" value="1"></div>
@@ -299,7 +312,7 @@ td.tg { text-align: left; font-family: var(--font-body); color: var(--muted); }
     </section>
 
     <section class="stack">
-      <h2>4. 保存して反省を書く</h2>
+      <h2>5. 保存して反省を書く</h2>
       <div class="two">
         <input type="text" id="title" placeholder="名前（例：全日本ミドル 予選）" aria-label="名前">
         <input type="date" id="raceDate" aria-label="日付">
@@ -309,7 +322,7 @@ td.tg { text-align: left; font-family: var(--font-body); color: var(--muted); }
     </section>
 
     <section class="stack">
-      <h2>5. 画像にする</h2>
+      <h2>6. 画像にする</h2>
       <button class="ghost" type="button" id="expBtn" disabled>画像を作る</button>
       <div class="hint" id="expMsg">いま画面で見ている線の太さのまま、地図全体を1枚の画像にします。</div>
     </section>
@@ -324,10 +337,10 @@ td.tg { text-align: left; font-family: var(--font-body); color: var(--muted); }
       </div>
       <div class="summary" id="rvStats"></div>
       <div class="row">
-        <button class="ghost" type="button" id="rvEdit">地図・合わせ点を直す</button>
+        <button class="ghost" type="button" id="rvEdit">地図・コントロールを直す</button>
         <button class="danger" type="button" id="rvDelete">削除</button>
       </div>
-      <div class="hint">合わせ点を通った順に 1, 2, 3… とし、スタート→1→2→…→ゴール をレッグにしています。図をタップすると拡大できます。</div>
+      <div class="hint">スタート→1→2→…→ゴール をレッグにしています。図をタップすると拡大できます。</div>
     </div>
     <section>
       <h2>レッグごとの反省</h2>
@@ -356,6 +369,7 @@ function pad(n) { return String(n).padStart(2, "0"); }
 const RAMP = ["#c1121f", "#f3722c", "#f9c74f", "#90be6d", "#2a9d8f", "#277da1", "#5a189a"];
 const MAX_BOUNDS = 12;
 const OVERPRINT = "#a626a4";
+const ALIGN = "#1d70b8";   // 位置合わせの点
 const MAX_MAP = 3000;     // 保存する地図の長い辺（px）
 const TAGS = ["ルート選択", "方向", "距離感", "アタック", "読図不足", "パラレル", "確認不足", "集中切れ", "焦り", "体力・脚"];
 const GOOD = "◎ 良いレッグ";
@@ -364,7 +378,9 @@ const cv = $("cv"), ctx = cv.getContext("2d");
 let img = null, W = 2000, H = 2000;
 let track = null;          // { name, n, raw, px, py, t, d, up, v, band, ix, iy, hasTime, hasEle }
 let A = { re: 1, im: 0 }, B = { re: 0, im: 0 };  // 画像座標 = A × 軌跡座標 + B（複素数で回転・縮尺・移動）
-let pairs = [];            // 合わせ点 { id, i: 軌跡の点, q: 画像上の位置 }
+let pairs = [];            // 位置合わせの点 { id, i: 軌跡の点, q: 画像上の位置 }
+let ctrls = [];            // コントロール（コース順）{ id, q: 地図上の位置 }。i（通過した軌跡の点）は assignCtrls で決める
+let history = [], insertAt = -1;
 let view = { k: 1, x: 0, y: 0 };
 let mode = "idle", pendingI = -1, probeI = -1;
 let unit = "pace", th = [6, 7.5, 3600 / 390, 3600 / 330, 3600 / 270], colorOverride = {};
@@ -476,7 +492,7 @@ function trackFromJson(j) {
 
 function setTrack(tr) {
   track = tr; trackDirty = true;
-  pairs = []; mode = "idle"; pendingI = -1; probeI = -1; exportFile = null;
+  pairs = []; ctrls = []; history = []; insertAt = -1; mode = "idle"; pendingI = -1; probeI = -1; exportFile = null;
   ra = 0; rb = tr.n - 1;
   $("rangeA").max = $("rangeB").max = tr.n - 1;
   $("rangeA").value = ra; $("rangeB").value = rb;
@@ -515,6 +531,54 @@ function project() {
   for (let i = 0; i < n; i++) {
     ix[i] = A.re * px[i] - A.im * py[i] + B.re;
     iy[i] = A.im * px[i] + A.re * py[i] + B.im;
+  }
+  assignCtrls();
+}
+
+// コントロールを通過した時刻を決める。往復や周回で同じ場所を2回以上通ることがあるので、
+// 近くを通った所（候補）をすべて挙げ、コース順に前後しない組み合わせのうち丸からの距離の合計が最小のものを選ぶ。
+// 手で選んだ通過（fix）があればそれを優先する
+const CTRL_NEAR_M = 35;
+function ctrlCandidates(q) {
+  const { ix, iy } = track, thr = CTRL_NEAR_M * Math.hypot(A.re, A.im), out = [];
+  let zone = null, gi = ra, gd = Infinity;
+  for (let i = ra; i <= rb; i++) {
+    const dd = Math.hypot(ix[i] - q.x, iy[i] - q.y);
+    if (dd < gd) { gd = dd; gi = i; }
+    if (dd <= thr) { if (!zone || dd < zone.d) zone = { i, d: dd, ...(zone ? { start: zone.start } : { start: i }) }; }
+    else if (zone) { out.push(zone); zone = null; }
+  }
+  if (zone) out.push(zone);
+  return out.length ? out : [{ i: gi, d: gd }];
+}
+function assignCtrls() {
+  if (!track) return;
+  const scale = Math.hypot(A.re, A.im);
+  const cands = ctrls.map(c => {
+    const all = ctrlCandidates(c.q);
+    c.cands = all.map(x => x.i);
+    const f = c.fix != null && all.find(x => Math.abs(x.i - c.fix) <= 3);
+    return f ? [f] : all;
+  });
+  // 動的計画法：cost[k][j] = k 番目を候補 j で通ったときの距離の合計の最小
+  const cost = [], from = [];
+  cands.forEach((cs, k) => {
+    cost[k] = cs.map(c => {
+      if (k === 0) return c.i > ra ? c.d : Infinity;
+      let best = Infinity, arg = -1;
+      cands[k - 1].forEach((p, j) => { if (p.i < c.i && cost[k - 1][j] < best) { best = cost[k - 1][j]; arg = j; } });
+      (from[k] ||= [])[cs.indexOf(c)] = arg;
+      return best + c.d;
+    });
+  });
+  const m = ctrls.length;
+  let j = -1;
+  if (m) cost[m - 1].forEach((v, x) => { if (cands[m - 1][x].i < rb && (j < 0 || v < cost[m - 1][j])) j = x; });
+  if (j >= 0 && Number.isFinite(cost[m - 1][j])) {
+    for (let k = m - 1; k >= 0; k--) { const c = cands[k][j]; ctrls[k].i = c.i; ctrls[k].off = c.d / scale; j = k ? from[k][j] : -1; }
+  } else {
+    // 順番どおりに並ぶ組み合わせがなければ、それぞれいちばん近い所（レッグには⚠が出る）
+    ctrls.forEach((c, k) => { const b = cands[k].reduce((a, x) => (x.d < a.d ? x : a)); c.i = b.i; c.off = b.d / scale; });
   }
 }
 
@@ -555,7 +619,7 @@ function solvePairs() {
 function alignText() {
   if (!track) return "軌跡をタップすると、その地点の速度が出ます。2本指で拡大、ドラッグで移動。";
   if (!img) return "地図の画像を読み込むと、軌跡を地図に合わせられます。";
-  if (!pairs.length) return "いまは北を上にして置いただけです。「合わせ点を追加」で、コントロールの位置を通った順に合わせてください（合わせ点がそのままレッグの区切りになります）。2〜3か所以上、なるべく離すと向きと縮尺も合います。";
+  if (!pairs.length) return "いまは北を上にして置いただけです。まず「合わせ点」で、道の分岐やコントロールなど場所のはっきりした点を2〜3か所、なるべく離して合わせてください。向きと縮尺も合います。";
   if (pairs.length === 1) return "合わせ点1か所：位置だけ合わせています。もう1か所以上で向きと縮尺も合います。";
   const scale = Math.hypot(A.re, A.im);
   const rms = Math.sqrt(pairs.reduce((s, p) => s + (track.ix[p.i] - p.q.x) ** 2 + (track.iy[p.i] - p.q.y) ** 2, 0) / pairs.length);
@@ -565,21 +629,21 @@ function alignText() {
 
 /* ---------- レッグ ---------- */
 
-// 合わせ点を通った順に並べ、スタート→1→…→ゴールで区切る
+// コース順に スタート→1→…→ゴール で区切る
 function controls() {
-  const ps = pairs.filter(p => p.i > ra && p.i < rb).sort((a, b) => a.i - b.i);
   return [
     { key: "S", i: ra, label: "S", x: track.ix[ra], y: track.iy[ra] },
-    ...ps.map((p, k) => ({ key: p.id, i: p.i, label: String(k + 1), x: p.q.x, y: p.q.y })),
+    ...ctrls.map((c, k) => ({ key: c.id, i: c.i, label: String(k + 1), x: c.q.x, y: c.q.y })),
     { key: "F", i: rb, label: "F", x: track.ix[rb], y: track.iy[rb] },
   ];
 }
 function legs() {
   const cs = controls();
-  return cs.slice(0, -1).map((a, k) => ({ from: a, to: cs[k + 1], key: `${a.key}>${cs[k + 1].key}`, name: `${a.label} → ${cs[k + 1].label}` }));
+  return cs.slice(0, -1).map((a, k) => ({ from: a, to: cs[k + 1], key: `${a.key}>${cs[k + 1].key}`, name: `${a.label} → ${cs[k + 1].label}`, bad: !(cs[k + 1].i > a.i) }));
 }
 
 function legStats(a, b) {
+  if (!(b > a)) return { dist: NaN, straight: NaN, sec: NaN, climb: NaN, ratio: NaN, pace: NaN, time: new Array(th.length + 1).fill(0) };
   const { t, d, up, px, py, hasTime, hasEle, band } = track;
   const dist = d[b] - d[a], straight = Math.hypot(px[b] - px[a], py[b] - py[a]);
   const sec = hasTime ? t[b] - t[a] : NaN;
@@ -691,10 +755,16 @@ function render() {
   if (zl) { strokeTrack(ctx, Number($("lw").value) * u, ra, rb, true); strokeTrack(ctx, Number($("lw").value) * u, zl.from.i, zl.to.i); }
   else strokeTrack(ctx, Number($("lw").value) * u, ra, rb);
   drawCourse(ctx, 13 * u, 2.2 * u, { only: zl?.key });
-  // 合わせ点：軌跡のその点と地図上の位置を細い線で結ぶ（ずれの確認用）
+  // 合わせ点は青い十字。軌跡のその点と細い線で結ぶ（ずれの確認用）。画像の書き出しには描かない
   const { ix, iy } = track;
-  ctx.strokeStyle = OVERPRINT; ctx.lineWidth = 1.2 * u;
-  for (const p of pairs) { ctx.beginPath(); ctx.moveTo(p.q.x, p.q.y); ctx.lineTo(ix[p.i], iy[p.i]); ctx.stroke(); }
+  if (!zl) {
+    ctx.strokeStyle = ALIGN; ctx.lineWidth = 2 * u;
+    for (const p of pairs) {
+      ctx.beginPath(); ctx.moveTo(p.q.x, p.q.y); ctx.lineTo(ix[p.i], iy[p.i]);
+      ctx.moveTo(p.q.x - 9 * u, p.q.y); ctx.lineTo(p.q.x + 9 * u, p.q.y); ctx.moveTo(p.q.x, p.q.y - 9 * u); ctx.lineTo(p.q.x, p.q.y + 9 * u);
+      ctx.stroke();
+    }
+  }
   for (const [i, col] of [[pendingI, OVERPRINT], [probeI, "#111111"]]) {
     if (i < 0) continue;
     ctx.fillStyle = "#ffffff"; ctx.strokeStyle = col; ctx.lineWidth = 3 * u;
@@ -786,12 +856,25 @@ function nearestPoint(sx, sy) {
   return { i: best, dist: Math.sqrt(bd) };
 }
 
+const newId = p => p + Math.random().toString(36).slice(2, 8);
+
 function tap(sx, sy) {
   if (!track) return;
+  const q = { x: (sx - view.x) / view.k, y: (sy - view.y) / view.k };
   if (mode === "pickMap") {
-    pairs.push({ id: Math.random().toString(36).slice(2, 8), i: pendingI, q: { x: (sx - view.x) / view.k, y: (sy - view.y) / view.k } });
+    const p = { id: newId("p"), i: pendingI, q };
+    pairs.push(p); history.push({ type: "pair", id: p.id });
     pendingI = -1; mode = "idle";
     solvePairs(); refresh();
+    return;
+  }
+  if (mode === "pickCtrl") {
+    // 合わせ点の近くをタップしたら、その位置をコントロールにする
+    const near = pairs.find(p => Math.hypot(p.q.x * view.k + view.x - sx, p.q.y * view.k + view.y - sy) < 30);
+    const c = { id: newId("c"), q: near ? { ...near.q } : q };
+    if (insertAt >= 0) { ctrls.splice(insertAt, 0, c); insertAt = -1; } else ctrls.push(c);
+    history.push({ type: "ctrl", id: c.id });
+    assignCtrls(); refresh();
     return;
   }
   const { i, dist } = nearestPoint(sx, sy);
@@ -817,19 +900,44 @@ function showProbe() {
   el.textContent = "● " + parts.join(" ・ ");
 }
 
+function bubbleText() {
+  if (mode === "pickTrack") return "合わせ点：軌跡の上の、場所がはっきりした点をタップ";
+  if (mode === "pickMap") return "合わせ点：その点が地図上で本当はどこかをタップ";
+  if (mode === "pickCtrl") return `コントロール${(insertAt >= 0 ? insertAt : ctrls.length) + 1}：地図の丸の中心をタップ（終わったら「完了」）`;
+  return "";
+}
 function bubble(text) {
   $("bubble").textContent = text; $("bubble").hidden = !text;
-  $("pairBtn").textContent = mode === "idle" ? "合わせ点を追加" : "やめる";
-  $("pairBtn").classList.toggle("on", mode !== "idle");
+  const aligning = mode === "pickTrack" || mode === "pickMap";
+  $("pairBtn").textContent = aligning ? "やめる" : "合わせ点";
+  $("pairBtn").classList.toggle("on", aligning);
+  $("ctrlBtn").textContent = mode === "pickCtrl" ? "完了" : "コントロール";
+  $("ctrlBtn").classList.toggle("on", mode === "pickCtrl");
 }
 
 $("pairBtn").addEventListener("click", () => {
-  if (mode !== "idle") { mode = "idle"; pendingI = -1; refresh(); return; }
-  mode = "pickTrack"; probeI = -1; showProbe();
-  bubble("軌跡の上の、場所がはっきりした点をタップ");
-  draw();
+  if (mode === "pickTrack" || mode === "pickMap") { mode = "idle"; pendingI = -1; refresh(); return; }
+  mode = "pickTrack"; probeI = -1; insertAt = -1; showProbe();
+  bubble(bubbleText()); draw();
 });
-$("undoBtn").addEventListener("click", () => { pairs.pop(); solvePairs(); refresh(); });
+function startCtrl(at = -1) {
+  mode = "pickCtrl"; pendingI = -1; probeI = -1; insertAt = at; showProbe();
+  bubble(bubbleText()); draw();
+}
+$("ctrlBtn").addEventListener("click", () => {
+  if (mode === "pickCtrl") { mode = "idle"; insertAt = -1; refresh(); return; }
+  startCtrl();
+});
+// 最後に置いた点（合わせ点かコントロール）を取り消す
+$("undoBtn").addEventListener("click", () => {
+  let done = false;
+  while (history.length && !done) {
+    const h = history.pop(), list = h.type === "pair" ? pairs : ctrls, k = list.findIndex(x => x.id === h.id);
+    if (k >= 0) { list.splice(k, 1); done = true; if (h.type === "pair") solvePairs(); else assignCtrls(); }
+  }
+  if (!done) { if (ctrls.length) { ctrls.pop(); assignCtrls(); } else if (pairs.length) { pairs.pop(); solvePairs(); } }
+  refresh();
+});
 $("fitBtn").addEventListener("click", () => (zoomLeg && !$("zoom").hidden ? fitLeg(zoomLeg) : fitView()));
 
 /* ---------- 色分けの設定 ---------- */
@@ -957,9 +1065,43 @@ function onRange(e) {
   if (a >= b) { if (e.target.id === "rangeA") a = b - 1; else b = a + 1; $("rangeA").value = a; $("rangeB").value = b; }
   ra = a; rb = b;
   if (probeI >= 0 && (probeI < ra || probeI > rb)) probeI = -1;
+  assignCtrls(); renderCtrlList();
   exportFile = null; syncExport();
   refreshRangeLabels(); renderLegend(); showProbe(); draw();
 }
+
+/* ---------- コントロールの一覧 ---------- */
+
+function renderCtrlList() {
+  const box = $("ctrlList");
+  $("pairsToCtrl").disabled = !pairs.length;
+  if (!track || !ctrls.length) { box.innerHTML = ""; return; }
+  box.innerHTML = ctrls.map((c, k) => {
+    const far = c.off > CTRL_NEAR_M, t = track.hasTime && c.i >= 0 ? `通過 ${fmtDur(track.t[c.i] - track.t[ra])}` : "";
+    const n = c.cands?.length || 0, at = n > 1 ? c.cands.findIndex(i => Math.abs(i - c.i) <= 3) + 1 : 0;
+    return `<div class="cl"><b>${k + 1}</b><span class="${far ? "warn" : ""}">${[t, `軌跡から${Math.round(c.off)}m`].filter(Boolean).join(" ・ ")}${far ? " ← 位置を確認" : ""}${n > 1 ? `<br><button class="ghost" type="button" data-alt="${k}">別の通過（${at}/${n}回目）</button>` : ""}</span>
+      <button class="ghost" type="button" data-ins="${k}">前に追加</button><button class="ghost" type="button" data-del="${k}">削除</button></div>`;
+  }).join("");
+  // 同じ場所を何度か通ったときは、どの通過をコントロールとするか手で選べる
+  box.querySelectorAll("[data-alt]").forEach(b => b.addEventListener("click", () => {
+    const c = ctrls[Number(b.dataset.alt)], k = c.cands.findIndex(i => Math.abs(i - c.i) <= 3);
+    c.fix = c.cands[(k + 1) % c.cands.length];
+    assignCtrls(); refresh();
+  }));
+  box.querySelectorAll("[data-ins]").forEach(b => b.addEventListener("click", () => { startCtrl(Number(b.dataset.ins)); $("stage").scrollIntoView({ block: "center" }); }));
+  box.querySelectorAll("[data-del]").forEach(b => b.addEventListener("click", () => { ctrls.splice(Number(b.dataset.del), 1); assignCtrls(); refresh(); }));
+}
+
+// 合わせ点をコントロールの位置に置いていたときは、まとめてコントロールにできる（通った順）
+$("pairsToCtrl").addEventListener("click", () => {
+  const used = new Set(ctrls.map(c => `${c.q.x},${c.q.y}`));
+  for (const p of [...pairs].sort((a, b) => a.i - b.i)) {
+    if (used.has(`${p.q.x},${p.q.y}`)) continue;
+    const c = { id: newId("c"), q: { ...p.q } };
+    ctrls.push(c); history.push({ type: "ctrl", id: c.id });
+  }
+  assignCtrls(); refresh();
+});
 $("rangeA").addEventListener("input", onRange);
 $("rangeB").addEventListener("input", onRange);
 
@@ -972,10 +1114,12 @@ $("smooth").addEventListener("input", () => { refreshSliderLabels(); computeSpee
 for (const id of ["lw", "op", "halo"]) $(id).addEventListener("input", () => { refreshSliderLabels(); exportFile = null; syncExport(); draw(); });
 
 function refresh() {
-  bubble(mode === "pickTrack" ? "軌跡の上の、場所がはっきりした点をタップ" : mode === "pickMap" ? "次に、その点が地図上で本当はどこかをタップ" : "");
+  bubble(bubbleText());
   $("pairBtn").disabled = !(track && img);
-  $("undoBtn").disabled = !pairs.length;
+  $("ctrlBtn").disabled = !track;
+  $("undoBtn").disabled = !(pairs.length || ctrls.length);
   $("alignMsg").textContent = alignText();
+  renderCtrlList();
   exportFile = null; syncExport(); syncSave();
   refreshRangeLabels(); renderLegend(); showProbe(); draw();
 }
@@ -1005,7 +1149,7 @@ $("imgFile").addEventListener("change", async e => {
     }
     img = im; W = im.naturalWidth; H = im.naturalHeight; mapBlob = blob; mapDirty = true;
     $("imgLabel").classList.add("done");
-    pairs = []; mode = "idle"; pendingI = -1;
+    pairs = []; ctrls = []; history = []; insertAt = -1; mode = "idle"; pendingI = -1;
     if (track) fitTrack();
     fitView(); refresh();
     loadMsg(`地図：${f.name}（${W}×${H}px、${Math.round(blob.size / 1024)}KB）`);
@@ -1057,7 +1201,7 @@ async function loadIcuList() {
   const box = $("icuList");
   box.innerHTML = '<span class="hint">読み込み中…</span>';
   try {
-    const today = new Date(), from = new Date(today); from.setDate(from.getDate() - 13);
+    const today = new Date(), from = new Date(today); from.setDate(from.getDate() - 6);
     const day = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
     const list = await (await icu(`/athlete/${encodeURIComponent(cfg.aid)}/activities?oldest=${day(from)}&newest=${day(today)}`)).json();
     const acts = list.filter(a => ["Run", "TrailRun", "Hike", "Walk"].includes(a.type) && (a.moving_time || 0) >= 120)
@@ -1208,7 +1352,7 @@ function syncSave() {
 }
 
 function collectSettings() {
-  return { pairs, ra, rb, th, colorOverride, A, B, W, H, smooth: +$("smooth").value, lw: +$("lw").value, op: +$("op").value, halo: $("halo").checked };
+  return { pairs, ctrls: ctrls.map(c => ({ id: c.id, q: c.q, ...(c.fix != null ? { fix: c.fix } : {}) })), ra, rb, th, colorOverride, A, B, W, H, smooth: +$("smooth").value, lw: +$("lw").value, op: +$("op").value, halo: $("halo").checked };
 }
 
 async function makeThumb() {
@@ -1308,6 +1452,10 @@ async function openRoute(id) {
 
 function applySettings(s) {
   pairs = s.pairs || []; th = s.th || th; colorOverride = s.colorOverride || {};
+  // コントロールを分ける前に保存したものは、合わせ点を通った順にコントロールとみなす（反省の対応を保つ）
+  ctrls = s.ctrls ? s.ctrls.map(c => ({ id: c.id, q: { ...c.q }, fix: c.fix }))
+    : [...pairs].sort((a, b) => a.i - b.i).map(p => ({ id: p.id, q: { ...p.q } }));
+  history = []; insertAt = -1;
   ra = s.ra ?? 0; rb = Math.min(s.rb ?? track.n - 1, track.n - 1);
   for (const [id, v] of [["smooth", s.smooth], ["lw", s.lw], ["op", s.op]]) if (v != null) $(id).value = v;
   if (s.halo != null) $("halo").checked = s.halo;
@@ -1322,7 +1470,7 @@ function applySettings(s) {
 
 function resetRoute() {
   route = { id: null, title: "", date: "", activityId: null, notes: {} };
-  img = null; track = null; pairs = []; mapBlob = null; W = H = 2000; trackDirty = mapDirty = false;
+  img = null; track = null; pairs = []; ctrls = []; history = []; insertAt = -1; mapBlob = null; W = H = 2000; trackDirty = mapDirty = false;
   mode = "idle"; pendingI = -1; probeI = -1;
   $("title").value = ""; $("raceDate").value = ""; $("imgFile").value = ""; $("gpxFile").value = "";
   $("imgLabel").classList.remove("done"); $("gpxLabel").classList.remove("done");
@@ -1379,12 +1527,12 @@ function renderReview() {
     det.addEventListener("toggle", () => { if (det.open && !det.querySelector(".legbody")) buildLegBody(det, l); });
     box.appendChild(det);
   });
-  if (L.length === 1) box.insertAdjacentHTML("beforeend", '<div class="hint">合わせ点がないので、スタートからゴールまでが1レッグです。「地図・合わせ点を直す」でコントロールに合わせ点を置くと、レッグに分かれます。</div>');
-  // 合わせ点を変えてレッグが合わなくなった反省も消さずに見せる
+  if (L.length === 1) box.insertAdjacentHTML("beforeend", '<div class="hint">コントロールがないので、スタートからゴールまでが1レッグです。「地図・コントロールを直す」でコントロールを置くと、レッグに分かれます。</div>');
+  // コントロールを変えてレッグが合わなくなった反省も消さずに見せる
   const keys = new Set(L.map(l => l.key));
   const orphans = Object.entries(route.notes).filter(([k, n]) => !keys.has(k) && hasNote(n));
   if (orphans.length) {
-    box.insertAdjacentHTML("beforeend", `<div class="hint">合わせ点を変えたため、対応するレッグがなくなった反省（${orphans.length}件）：</div>` +
+    box.insertAdjacentHTML("beforeend", `<div class="hint">コントロールを変えたため、対応するレッグがなくなった反省（${orphans.length}件）：</div>` +
       orphans.map(([k, n]) => `<div class="tile"><span class="k">${n.loss ? "ロス" + fmtDur(n.loss) + " ・ " : ""}${esc((n.tags || []).join("・"))}</span><span style="white-space:pre-wrap">${esc([n.text, n.next].filter(Boolean).join("\n→ "))}</span></div>`).join(""));
   }
   renderReviewSummary();
@@ -1396,8 +1544,9 @@ function buildLegBody(det, l) {
   const body = document.createElement("div");
   body.className = "legbody";
   const parts = [
+    l.bad ? "⚠ コントロールの順番か位置がおかしいため計算できません。「地図・コントロールを直す」で確認してください" : null,
     Number.isFinite(st.sec) ? fmtDur(st.sec) : null,
-    `${Math.round(st.dist)}m（直線${Math.round(st.straight)}m${Number.isFinite(st.ratio) ? `・迂回率${st.ratio.toFixed(2)}` : ""}）`,
+    Number.isFinite(st.dist) ? `${Math.round(st.dist)}m（直線${Math.round(st.straight)}m${Number.isFinite(st.ratio) ? `・迂回率${st.ratio.toFixed(2)}` : ""}）` : null,
     Number.isFinite(st.climb) ? `↑${Math.round(st.climb)}m` : null,
     Number.isFinite(st.pace) ? `${fmtPace(st.pace)}/km` : null,
   ].filter(Boolean);
