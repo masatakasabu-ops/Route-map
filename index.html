@@ -189,6 +189,8 @@ th, td { padding: 6px 8px; border-bottom: 1px solid var(--line); text-align: rig
 th:first-child, td:first-child { text-align: left; }
 th { font-family: var(--font-body); color: var(--muted); font-weight: 700; font-size: .75rem; }
 td.tg { text-align: left; font-family: var(--font-body); color: var(--muted); }
+.lapcenter { display: grid; place-items: center; gap: 0; min-height: 48px; margin-bottom: 8px; text-align: center; text-decoration: none; font-weight: 700; }
+.lapcenter small { font-weight: 400; font-size: .75rem; color: var(--muted); }
 .lapsel { display: grid; grid-template-columns: 6.5em minmax(0, 1fr); gap: 8px; }
 .lapsel.one { grid-template-columns: minmax(0, 1fr); }
 .tile .s { font-family: var(--font-num); font-size: .72rem; color: var(--muted); }
@@ -352,6 +354,7 @@ td.top { color: var(--forest); font-weight: 700; }
     <section>
       <h2>ラップ（LapCenter）</h2>
       <div class="stack" id="lapBox"></div>
+      <a class="ghost lapcenter" href="https://mulka2.com/lapcenter/" target="_blank" rel="noopener">LapCenter を開く ↗<small>大会のラップファイル（.lxm）をダウンロードしてから下で読み込む</small></a>
       <label class="filebtn" id="lapLabel"><span id="lapLabelText">ラップファイルを読み込む</span><small>LapCenter からダウンロードした .lxm</small><input type="file" id="lapFile"></label>
       <div class="hint" id="lapMsg"></div>
     </section>
