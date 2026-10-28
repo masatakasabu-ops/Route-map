@@ -189,6 +189,15 @@ th, td { padding: 6px 8px; border-bottom: 1px solid var(--line); text-align: rig
 th:first-child, td:first-child { text-align: left; }
 th { font-family: var(--font-body); color: var(--muted); font-weight: 700; font-size: .75rem; }
 td.tg { text-align: left; font-family: var(--font-body); color: var(--muted); }
+h2 small { font-weight: 400; letter-spacing: 0; margin-left: 6px; }
+.steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.steps > * {
+  display: grid; place-items: center; min-height: 36px; padding: 4px; border-radius: 999px; border: 1px solid var(--line);
+  background: transparent; color: var(--muted); font: inherit; font-size: .85rem; font-weight: 700;
+}
+.steps button { cursor: pointer; }
+.steps button:disabled { opacity: .45; cursor: default; }
+.steps button[aria-current="step"] { background: var(--accent); border-color: var(--accent); color: var(--accent-fg); }
 .lapcenter { display: grid; place-items: center; gap: 0; min-height: 48px; margin-bottom: 8px; text-align: center; text-decoration: none; font-weight: 700; }
 .lapcenter small { font-weight: 400; font-size: .75rem; color: var(--muted); }
 .lapsel { display: grid; grid-template-columns: 6.5em minmax(0, 1fr); gap: 8px; }
@@ -253,19 +262,46 @@ td.top { color: var(--forest); font-weight: 700; }
 
   <!-- ========== 作成 ========== -->
   <div class="view" id="editView" hidden>
-    <section>
-      <h2>1. 読み込む</h2>
-      <div class="loadrow">
-        <label class="filebtn" id="imgLabel">地図の画像<small>写真・スキャン</small><input type="file" id="imgFile" accept="image/*"></label>
-        <label class="filebtn" id="gpxLabel">GPXファイル<small>.gpx</small><input type="file" id="gpxFile" accept=".gpx,application/gpx+xml,application/xml,text/xml"></label>
-      </div>
-      <div id="icuBox" hidden>
-        <div class="hint">または Intervals.icu の記録（直近7日）から選ぶ</div>
-        <div id="icuList" class="icu"></div>
-      </div>
-      <div class="hint" id="loadMsg"></div>
-    </section>
+    <nav class="steps" aria-label="手順">
+      <button type="button" data-step="load">① 読み込み</button>
+      <button type="button" data-step="map">② 地図合わせ</button>
+      <span>③ 反省</span>
+    </nav>
 
+    <!-- ① 読み込み -->
+    <div class="view" id="stepLoad">
+      <section class="stack">
+        <h2>ラップ（LapCenter）<small>なくても進めます</small></h2>
+        <a class="ghost lapcenter" href="https://mulka2.com/lapcenter/" target="_blank" rel="noopener">LapCenter を開く ↗<small>大会のラップファイル（.lxm）をダウンロード</small></a>
+        <label class="filebtn" id="lapLabel"><span id="lapLabelText">ラップファイルを読み込む</span><small>ダウンロードした .lxm</small><input type="file" id="lapFile"></label>
+        <div class="stack" id="lapPick"></div>
+        <div class="hint" id="lapMsg"></div>
+      </section>
+      <section class="stack">
+        <h2>GPX</h2>
+        <div id="icuBox" hidden>
+          <div class="hint" style="margin-top:0">Intervals.icu の記録（直近7日）から選ぶ</div>
+          <div id="icuList" class="icu"></div>
+        </div>
+        <label class="filebtn" id="gpxLabel">GPXファイルを選ぶ<small>.gpx</small><input type="file" id="gpxFile" accept=".gpx,application/gpx+xml,application/xml,text/xml"></label>
+      </section>
+      <section class="stack">
+        <h2>地図の画像</h2>
+        <label class="filebtn" id="imgLabel">地図の画像を選ぶ<small>写真・スキャン</small><input type="file" id="imgFile" accept="image/*"></label>
+      </section>
+      <section class="stack">
+        <h2>名前と日付</h2>
+        <div class="two">
+          <input type="text" id="title" placeholder="名前（例：全日本ミドル 予選）" aria-label="名前">
+          <input type="date" id="raceDate" aria-label="日付">
+        </div>
+      </section>
+      <div class="hint" id="loadMsg"></div>
+      <button class="primary" type="button" id="nextBtn" disabled>次へ：地図に合わせる</button>
+    </div>
+
+    <!-- ② 地図合わせ -->
+    <div class="view" id="stepMap" hidden>
     <section id="stageHome">
       <div class="stage" id="stage">
         <canvas id="cv"></canvas>
@@ -283,14 +319,18 @@ td.top { color: var(--forest); font-weight: 700; }
     </section>
 
     <section>
-      <h2>2. コントロール（レッグの区切り）</h2>
-      <div class="hint" style="margin-top:0">地図に合わせ終わったら「コントロール」を押し、1, 2, 3… の順に地図の丸の中心をタップします。通過した時刻は軌跡から自動で探します。合わせ点の青い十字の近くをタップすると、その位置をそのまま使います。</div>
+      <h2>コントロール（レッグの区切り）</h2>
+      <div class="hint" style="margin-top:0">地図に合わせ終わったら「コントロール」を押し、1, 2, 3… の順に地図の丸の中心をタップします。通過した時刻は軌跡から自動で探します。</div>
+      <div class="hint" id="ctrlTarget"></div>
       <div class="stack" id="ctrlList" style="margin-top:8px"></div>
       <div class="row" style="margin-top:8px"><button class="ghost" type="button" id="pairsToCtrl" disabled>合わせ点をすべてコントロールにする</button></div>
     </section>
 
+    <details class="setup">
+    <summary>色分けと表示の設定</summary>
+    <div class="view" style="margin-top:12px">
     <section>
-      <h2>3. 速度の色分け</h2>
+      <h2>速度の色分け</h2>
       <div class="seg" role="group" aria-label="単位">
         <button type="button" data-unit="pace">ペース（分/km）</button>
         <button type="button" data-unit="kmh">速度（km/h）</button>
@@ -307,7 +347,7 @@ td.top { color: var(--forest); font-weight: 700; }
     </section>
 
     <section>
-      <h2>4. 区間と表示</h2>
+      <h2>区間と表示</h2>
       <div class="sliders">
         <div class="sl"><div><span>はじめ（スタート）</span><b id="aLbl"></b></div><input type="range" id="rangeA" min="0" max="1" value="0"></div>
         <div class="sl"><div><span>おわり（ゴール）</span><b id="bLbl"></b></div><input type="range" id="rangeB" min="0" max="1" value="1"></div>
@@ -319,22 +359,20 @@ td.top { color: var(--forest); font-weight: 700; }
         <label class="check"><input type="checkbox" id="halo" checked>線を白で縁取る（地図の色と見分けやすく）</label>
       </div>
     </section>
+    </div>
+    </details>
 
-    <section class="stack">
-      <h2>5. 保存して反省を書く</h2>
-      <div class="two">
-        <input type="text" id="title" placeholder="名前（例：全日本ミドル 予選）" aria-label="名前">
-        <input type="date" id="raceDate" aria-label="日付">
+    <details class="setup">
+      <summary>画像として書き出す</summary>
+      <div class="stack" style="margin-top:12px">
+        <button class="ghost" type="button" id="expBtn" disabled>画像を作る</button>
+        <div class="hint" id="expMsg">いま画面で見ている線の太さのまま、地図全体を1枚の画像にします。</div>
       </div>
-      <button class="primary" type="button" id="saveBtn" disabled>保存して反省を書く</button>
-      <div class="hint" id="saveMsg"></div>
-    </section>
+    </details>
 
-    <section class="stack">
-      <h2>6. 画像にする</h2>
-      <button class="ghost" type="button" id="expBtn" disabled>画像を作る</button>
-      <div class="hint" id="expMsg">いま画面で見ている線の太さのまま、地図全体を1枚の画像にします。</div>
-    </section>
+    <button class="primary" type="button" id="saveBtn" disabled>保存して反省へ</button>
+    <div class="hint" id="saveMsg"></div>
+    </div>
   </div>
 
   <!-- ========== 反省 ========== -->
@@ -346,20 +384,13 @@ td.top { color: var(--forest); font-weight: 700; }
       </div>
       <div class="summary" id="rvStats"></div>
       <div class="row">
-        <button class="ghost" type="button" id="rvEdit">地図・コントロールを直す</button>
+        <button class="ghost" type="button" id="rvEdit">読み込み・地図を直す</button>
         <button class="danger" type="button" id="rvDelete">削除</button>
       </div>
-      <div class="hint">スタート→1→2→…→ゴール をレッグにしています。図をタップすると拡大できます。</div>
     </div>
+    <div class="stack" id="lapBox"></div>
     <section>
-      <h2>ラップ（LapCenter）</h2>
-      <div class="stack" id="lapBox"></div>
-      <a class="ghost lapcenter" href="https://mulka2.com/lapcenter/" target="_blank" rel="noopener">LapCenter を開く ↗<small>大会のラップファイル（.lxm）をダウンロードしてから下で読み込む</small></a>
-      <label class="filebtn" id="lapLabel"><span id="lapLabelText">ラップファイルを読み込む</span><small>LapCenter からダウンロードした .lxm</small><input type="file" id="lapFile"></label>
-      <div class="hint" id="lapMsg"></div>
-    </section>
-    <section>
-      <h2>レッグごとの反省</h2>
+      <h2>レッグごとの反省<small>図をタップで拡大</small></h2>
       <div class="stack" id="legsBox"></div>
     </section>
     <section>
@@ -1100,11 +1131,15 @@ function onRange(e) {
 function renderCtrlList() {
   const box = $("ctrlList");
   $("pairsToCtrl").disabled = !pairs.length;
+  // ラップがあれば、置くべきコントロールの数と番号を示す
+  const codes = route.lap?.cls.codes || [];
+  $("ctrlTarget").textContent = codes.length ? (codes.length === ctrls.length ? `✓ ラップと同じ${codes.length}個です。` : `ラップのコントロールは${codes.length}個です（今${ctrls.length}個）。同じ数にするとラップと結び付きます。`) : "";
+  $("ctrlTarget").className = "hint" + (codes.length && codes.length === ctrls.length ? " ok" : "");
   if (!track || !ctrls.length) { box.innerHTML = ""; return; }
   box.innerHTML = ctrls.map((c, k) => {
     const far = c.off > CTRL_NEAR_M, t = track.hasTime && c.i >= 0 ? `通過 ${fmtDur(track.t[c.i] - track.t[ra])}` : "";
     const n = c.cands?.length || 0, at = n > 1 ? c.cands.findIndex(i => Math.abs(i - c.i) <= 3) + 1 : 0;
-    return `<div class="cl"><b>${k + 1}</b><span class="${far ? "warn" : ""}">${[t, `軌跡から${Math.round(c.off)}m`].filter(Boolean).join(" ・ ")}${far ? " ← 位置を確認" : ""}${n > 1 ? `<br><button class="ghost" type="button" data-alt="${k}">別の通過（${at}/${n}回目）</button>` : ""}</span>
+    return `<div class="cl"><b>${k + 1}</b><span class="${far ? "warn" : ""}">${[codes[k] ? `番号${esc(codes[k])}` : "", t, `軌跡から${Math.round(c.off)}m`].filter(Boolean).join(" ・ ")}${far ? " ← 位置を確認" : ""}${n > 1 ? `<br><button class="ghost" type="button" data-alt="${k}">別の通過（${at}/${n}回目）</button>` : ""}</span>
       <button class="ghost" type="button" data-ins="${k}">前に追加</button><button class="ghost" type="button" data-del="${k}">削除</button></div>`;
   }).join("");
   // 同じ場所を何度か通ったときは、どの通過をコントロールとするか手で選べる
@@ -1246,7 +1281,7 @@ async function loadIcuList() {
     const m = startHash.match(/^#act-(.+)$/);
     if (m) {
       const id = decodeURIComponent(m[1]), b = [...box.children].find(x => x.dataset.id === id);
-      showView("edit");
+      showView("edit"); showStep("load");
       if (b) b.click(); else loadActivity({ id }, id);
     }
   } catch (err) { box.innerHTML = ""; loadMsg(err.message, true); }
@@ -1374,7 +1409,10 @@ function syncSave() {
   $("saveBtn").disabled = !track || !session;
   if (!session) $("saveMsg").textContent = "保存するには、一覧の下の「保存先の設定」でログインしてください。";
   else if ($("saveMsg").textContent.startsWith("保存するには")) $("saveMsg").textContent = "";
-  $("saveBtn").textContent = route.id ? "上書き保存して反省へ" : "保存して反省を書く";
+  $("saveBtn").textContent = route.id ? "上書き保存して反省へ" : "保存して反省へ";
+  $("nextBtn").disabled = !track;
+  $("nextBtn").textContent = track ? "次へ：地図に合わせる" : "GPXを読み込むと次へ進めます";
+  document.querySelector('[data-step="map"]').disabled = !track;
 }
 
 function collectSettings() {
@@ -1614,58 +1652,39 @@ function lapAnalysis() {
 // 地図のレッグ数とラップのレッグ数が同じときだけ、レッグの反省と結び付ける
 function lapRowsFor(L, la) { return la && la.me && la.rows.length === L.length ? la.rows : null; }
 
-function renderLap(L, la) {
-  const box = $("lapBox");
-  $("lapLabelText").textContent = la ? "別のラップファイルを読み込む" : "ラップファイルを読み込む";
-  if (!la) { box.innerHTML = ""; return; }
-  const { cls, me, mp, rows } = la, lap = route.lap, mapped = lapRowsFor(L, la);
-  const legName = k => (L.length === rows.length ? L[k].name : `${k ? k : "S"} → ${k === rows.length - 1 ? "F" : k + 1}`);
-  let html = `<div class="hint" style="margin-top:0">${esc(lap.event)} ・ ${esc(cls.name)}${cls.length ? `（${(cls.length / 1000).toFixed(1)}km` + (cls.climb ? ` ↑${cls.climb}m` : "") + "）" : ""}</div>
-    <div class="lapsel ${lapAll ? "" : "one"}">${lapAll ? `<select id="lapCls" aria-label="クラス">${lapAll.classes.map(c => `<option ${c.name === cls.name ? "selected" : ""}>${esc(c.name)}</option>`).join("")}</select>` : ""}
-    <select id="lapMe" aria-label="自分"><option value="">自分を選ぶ</option>${cls.runners.map(r => `<option value="${esc(r.n)}" ${r.n === lap.me ? "selected" : ""}>${esc(`${/^\d+$/.test(r.rk) ? r.rk + "位" : r.res || r.rk} ${r.n}（${r.c}）`)}</option>`).join("")}</select></div>`;
-  if (me) {
-    const tile = (k, v, s) => `<div class="tile"><span class="k">${k}</span><span class="v">${v}</span><span class="s">${s}</span></div>`;
-    html += `<div class="summary">
-      ${tile("成績", /^\d+$/.test(me.rk) ? `${me.rk}位` : esc(me.res || me.rk), `${esc(me.res)} ／ 完走${la.nFinished}人`)}
-      ${tile("巡航", Number.isFinite(mp.cruise) ? `${Math.round(mp.cruise * 100)}%` : "--", la.cruiseRank ? `巡航 ${la.cruiseRank}位` : "")}
-      ${tile("ミス", fmtDur(mp.lossSum), `ミス率 ${(mp.rate * 100).toFixed(1)}%${la.rateRank ? `（${la.rateRank}位）` : ""}`)}
-    </div>
-    <div class="hint">巡航：ミスのないレッグで、各レッグ上位3人平均の何%のタイムで走れたか（100%に近いほど速い）。ミス：巡航から見込まれるタイムより${MISS_SEC}秒以上かつ${MISS_PCT * 100}%以上遅かったレッグの超過分。巡航・ミス率の順位は完走者の中での順位です。</div>`;
-    if (!mapped) html += `<div class="hint err">地図のレッグ数（${L.length}）とラップのレッグ数（${rows.length}）が違うため、レッグの反省には結び付けていません。地図のコントロールを${rows.length - 1}個にすると結び付きます。</div>`;
-    html += `<div class="tablewrap"><table><thead><tr><th>レッグ</th><th>番号</th><th>ラップ</th><th>順位</th><th>トップ差</th><th>ミス</th></tr></thead><tbody>
-      ${rows.map(r => `<tr><td>${esc(legName(r.k))}</td><td>${esc(r.code)}</td><td>${r.t > 0 ? fmtDur(r.t) : "--"}</td>
-        <td class="${r.rank === 1 ? "top" : ""}">${r.rank ? `${r.rank}/${r.n}` : "--"}</td><td>${r.t > 0 ? "+" + fmtDur(r.t - r.best) : ""}</td>
-        <td class="${r.loss > 0 ? "miss" : ""}">${r.loss > 0 ? "+" + fmtDur(r.loss) : ""}</td></tr>`).join("")}
-    </tbody></table></div>`;
-    if (mapped) html += `<button class="ghost" type="button" id="lapFill">ミスの推定を反省の「ロス」欄に入れる（未入力のレッグだけ）</button>`;
-  } else {
-    html += '<div class="hint">一覧から自分を選ぶと、レッグ順位・巡航・ミスを出します。</div>';
-  }
-  html += `<div class="row"><button class="ghost" type="button" id="lapRemove">ラップを外す</button></div>`;
-  box.innerHTML = html;
+const tile = (k, v, s) => `<div class="tile"><span class="k">${k}</span><span class="v">${v}</span>${s != null ? `<span class="s">${s}</span>` : ""}</div>`;
+function runnerLabel(r) { return `${/^\d+$/.test(r.rk) ? r.rk + "位" : r.res || r.rk} ${r.n}（${r.c}）`; }
 
+// ① 読み込み：クラスと自分を選ぶ
+function renderLapPick() {
+  const box = $("lapPick"), lap = route.lap;
+  $("lapLabelText").textContent = lap ? "別のラップファイルを読み込む" : "ラップファイルを読み込む";
+  $("lapLabel").classList.toggle("done", !!lap);
+  if (!lap) { box.innerHTML = ""; return; }
+  const cls = lap.cls, me = cls.runners.find(r => r.n === lap.me);
+  box.innerHTML = `<div class="hint" style="margin-top:0">${esc(lap.event)}</div>
+    <div class="lapsel ${lapAll ? "" : "one"}">${lapAll ? `<select id="lapCls" aria-label="クラス">${lapAll.classes.map(c => `<option ${c.name === cls.name ? "selected" : ""}>${esc(c.name)}</option>`).join("")}</select>` : ""}
+    <select id="lapMe" aria-label="自分"><option value="">自分を選ぶ</option>${cls.runners.map(r => `<option value="${esc(r.n)}" ${r.n === lap.me ? "selected" : ""}>${esc(runnerLabel(r))}</option>`).join("")}</select></div>
+    <div class="hint ${me ? "ok" : ""}">${me ? `${esc(cls.name)} ${esc(runnerLabel(me))} ${esc(me.res)} ・ コントロール${cls.codes.length}個` : "一覧から自分を選んでください。"}</div>
+    <div class="row"><button class="ghost" type="button" id="lapRemove">ラップを外す</button></div>`;
   $("lapCls")?.addEventListener("change", e => setLapClass(e.target.value));
   $("lapMe").addEventListener("change", e => {
     lap.me = e.target.value;
     try { localStorage.setItem("routeLapMe", lap.me); } catch {}
-    scheduleNoteSave(); renderReview();
+    renderLapPick(); renderCtrlList();
   });
-  $("lapFill")?.addEventListener("click", () => {
-    let n = 0;
-    L.forEach((l, k) => {
-      const loss = Math.round(rows[k].loss), note = route.notes[l.key] || (route.notes[l.key] = { loss: 0, tags: [], text: "", next: "" });
-      if (loss > 0 && !note.loss) { note.loss = loss; n++; }
-    });
-    $("lapMsg").textContent = n ? `${n}レッグのロス欄に入れました。` : "入れられるレッグはありませんでした。";
-    scheduleNoteSave(); renderReview();
-  });
-  $("lapRemove").addEventListener("click", () => { route.lap = null; lapAll = null; $("lapMsg").textContent = ""; scheduleNoteSave(); renderReview(); });
+  $("lapRemove").addEventListener("click", () => { route.lap = null; lapAll = null; $("lapMsg").textContent = ""; renderLapPick(); renderCtrlList(); });
 }
 
+let autoTitle = "";
 function setLapClass(name, me) {
   const cls = lapAll.classes.find(c => c.name === name), has = n => n && cls.runners.some(r => r.n === n);
   route.lap = { event: lapAll.event, date: lapAll.date, cls, me: has(me) ? me : has(route.lap?.me) ? route.lap.me : "" };
-  scheduleNoteSave(); renderReview();
+  // 名前が空（または前に自動で入れたまま）なら大会名・クラスで埋める
+  const t = $("title").value.trim();
+  if (!t || t === autoTitle) $("title").value = autoTitle = `${lapAll.event.replace(/^\d{4}年度\s*/, "")} ${cls.name}`;
+  if (!$("raceDate").value && lapAll.date) $("raceDate").value = lapAll.date;
+  renderLapPick(); renderCtrlList();
 }
 
 // ファイルの拡張子が .lxm なので、iPhone で選べなくならないよう accept は付けていない
@@ -1679,22 +1698,56 @@ $("lapFile").addEventListener("change", async e => {
     // 前に選んだ自分の名前があるクラス → 同じクラス名 → レッグ数が地図と同じクラス の順に選ぶ
     let saved = "";
     try { saved = localStorage.getItem("routeLapMe") || ""; } catch {}
-    const want = legs().length;
+    const want = track ? legs().length : 0;
     const cls = lapAll.classes.find(c => c.runners.some(r => r.n === saved)) || lapAll.classes.find(c => c.name === route.lap?.cls.name)
       || lapAll.classes.find(c => Math.max(...c.runners.map(r => r.l.length)) === want) || lapAll.classes[0];
-    $("lapMsg").textContent = `${f.name} を読み込みました（${lapAll.event}、${lapAll.classes.length}クラス）。`;
+    $("lapMsg").textContent = `${f.name} を読み込みました（${lapAll.classes.length}クラス）。`;
     setLapClass(cls.name, saved);
   } catch (err) { $("lapMsg").textContent = err.message; }
 });
+
+// ③ 反省：結果のタイルと、たたんだラップ表
+function renderLapReview(L, la) {
+  const box = $("lapBox");
+  if (!la || !la.me) {
+    $("rvStats").innerHTML = statTiles(ra, rb);
+    box.innerHTML = route.lap ? '<div class="hint">ラップの自分が選ばれていません。「読み込み・地図を直す」で選んでください。</div>' : "";
+    return;
+  }
+  const { cls, me, mp, rows } = la, mapped = lapRowsFor(L, la);
+  $("rvStats").innerHTML =
+    tile("成績", /^\d+$/.test(me.rk) ? `${me.rk}位` : esc(me.res || me.rk), `${esc(cls.name)} ${esc(me.res)}`)
+    + tile("巡航", Number.isFinite(mp.cruise) ? `${Math.round(mp.cruise * 100)}%` : "--", la.cruiseRank ? `${la.cruiseRank}位／${la.nFinished}人` : "")
+    + tile("ミス", fmtDur(mp.lossSum), `${(mp.rate * 100).toFixed(1)}%${la.rateRank ? `・${la.rateRank}位` : ""}`);
+  const legName = k => (mapped ? L[k].name : `${k ? k : "S"} → ${k === rows.length - 1 ? "F" : k + 1}`);
+  box.innerHTML = `<details class="setup"><summary>レッグ別のラップ表</summary><div class="stack" style="margin-top:10px">
+    ${mapped ? "" : `<div class="hint err" style="margin-top:0">地図のレッグ数（${L.length}）とラップ（${rows.length}）が違うため、レッグの反省には結び付けていません。</div>`}
+    <div class="tablewrap"><table><thead><tr><th>レッグ</th><th>番号</th><th>ラップ</th><th>順位</th><th>トップ差</th><th>ミス</th></tr></thead><tbody>
+    ${rows.map(r => `<tr><td>${esc(legName(r.k))}</td><td>${esc(r.code)}</td><td>${r.t > 0 ? fmtDur(r.t) : "--"}</td>
+      <td class="${r.rank === 1 ? "top" : ""}">${r.rank ? `${r.rank}/${r.n}` : "--"}</td><td>${r.t > 0 ? "+" + fmtDur(r.t - r.best) : ""}</td>
+      <td class="${r.loss > 0 ? "miss" : ""}">${r.loss > 0 ? "+" + fmtDur(r.loss) : ""}</td></tr>`).join("")}
+    </tbody></table></div>
+    ${mapped ? `<button class="ghost" type="button" id="lapFill">ミスの推定を「ロス」欄に入れる（未入力のレッグだけ）</button>` : ""}
+    <div class="hint" id="lapFillMsg" style="margin-top:0">巡航：ミスのないレッグで、各レッグ上位3人平均の何%で走れたか（100%に近いほど速い）。ミス：巡航から見込まれるタイムより${MISS_SEC}秒以上かつ${MISS_PCT * 100}%以上遅かった分。順位は完走者の中で。</div>
+  </div></details>`;
+  $("lapFill")?.addEventListener("click", () => {
+    let n = 0;
+    L.forEach((l, k) => {
+      const loss = Math.round(rows[k].loss), note = route.notes[l.key] || (route.notes[l.key] = { loss: 0, tags: [], text: "", next: "" });
+      if (loss > 0 && !note.loss) { note.loss = loss; n++; }
+    });
+    scheduleNoteSave(); renderReview();
+    saveState(n ? `${n}レッグのロス欄に入れました` : "入れられるレッグはありませんでした");
+  });
+}
 function legChip(n) {
   if (!hasNote(n)) return '<span class="chip todo">未記入</span>';
   return n.loss ? `<span class="chip loss">ロス${fmtDur(n.loss)}</span>` : '<span class="chip done">記入済</span>';
 }
 
 function renderReview() {
-  $("rvStats").innerHTML = statTiles(ra, rb);
   const box = $("legsBox"), L = legs(), la = lapAnalysis(), lrs = lapRowsFor(L, la);
-  renderLap(L, la);
+  renderLapReview(L, la);
   box.innerHTML = "";
   L.forEach((l, k) => {
     const det = document.createElement("details");
@@ -1703,7 +1756,7 @@ function renderReview() {
     det.addEventListener("toggle", () => { if (det.open && !det.querySelector(".legbody")) buildLegBody(det, l, lrs?.[k]); });
     box.appendChild(det);
   });
-  if (L.length === 1) box.insertAdjacentHTML("beforeend", '<div class="hint">コントロールがないので、スタートからゴールまでが1レッグです。「地図・コントロールを直す」でコントロールを置くと、レッグに分かれます。</div>');
+  if (L.length === 1) box.insertAdjacentHTML("beforeend", '<div class="hint">コントロールがないので、スタートからゴールまでが1レッグです。「読み込み・地図を直す」でコントロールを置くと、レッグに分かれます。</div>');
   // コントロールを変えてレッグが合わなくなった反省も消さずに見せる
   const keys = new Set(L.map(l => l.key));
   const orphans = Object.entries(route.notes).filter(([k, n]) => !keys.has(k) && hasNote(n));
@@ -1720,7 +1773,7 @@ function buildLegBody(det, l, lr) {
   const body = document.createElement("div");
   body.className = "legbody";
   const parts = [
-    l.bad ? "⚠ コントロールの順番か位置がおかしいため計算できません。「地図・コントロールを直す」で確認してください" : null,
+    l.bad ? "⚠ コントロールの順番か位置がおかしいため計算できません。「読み込み・地図を直す」で確認してください" : null,
     Number.isFinite(st.sec) ? fmtDur(st.sec) : null,
     Number.isFinite(st.dist) ? `${Math.round(st.dist)}m（直線${Math.round(st.straight)}m${Number.isFinite(st.ratio) ? `・迂回率${st.ratio.toFixed(2)}` : ""}）` : null,
     Number.isFinite(st.climb) ? `↑${Math.round(st.climb)}m` : null,
@@ -1803,8 +1856,7 @@ $("rvTitle").addEventListener("input", () => { route.title = $("rvTitle").value;
 $("rvDate").addEventListener("input", () => { route.date = $("rvDate").value; $("raceDate").value = route.date; scheduleNoteSave(); });
 $("rvEdit").addEventListener("click", async () => {
   if (saveTimer) await saveNotes();
-  showView("edit");
-  requestAnimationFrame(() => { resize(); fitView(); refresh(); });
+  showView("edit"); showStep("map");
 });
 let delArmed = 0;
 $("rvDelete").addEventListener("click", async () => {
@@ -1851,16 +1903,24 @@ function showView(v) {
   if (v !== "review") { try { history.replaceState(null, "", location.pathname); } catch {} }
   scrollTo(0, 0);
 }
+// 作成は ① 読み込み → ② 地図合わせ の2段。地図のキャンバスは見えてから大きさを合わせる
+function showStep(s) {
+  if (s === "map" && !track) s = "load";
+  $("stepLoad").hidden = s !== "load"; $("stepMap").hidden = s !== "map";
+  for (const b of document.querySelectorAll("[data-step]")) b.setAttribute("aria-current", b.dataset.step === s ? "step" : "false");
+  if (s === "load") renderLapPick();
+  scrollTo(0, 0);
+  requestAnimationFrame(() => { resize(); if (s === "map") fitView(); refresh(); });
+}
+for (const b of document.querySelectorAll("[data-step]")) b.addEventListener("click", () => showStep(b.dataset.step));
+$("nextBtn").addEventListener("click", () => showStep("map"));
+
 $("tabList").addEventListener("click", async () => { if (saveTimer) await saveNotes(); showView("list"); loadList(); });
 $("tabEdit").addEventListener("click", async () => {
   if (saveTimer) await saveNotes();
-  showView("edit");
-  requestAnimationFrame(() => { resize(); fitView(); refresh(); });
+  showView("edit"); showStep(track ? "map" : "load");
 });
-$("newBtn").addEventListener("click", () => {
-  resetRoute(); showView("edit");
-  requestAnimationFrame(() => { resize(); fitView(); refresh(); });
-});
+$("newBtn").addEventListener("click", () => { resetRoute(); showView("edit"); showStep("load"); });
 
 /* ---------- 起動 ---------- */
 
