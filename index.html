@@ -146,6 +146,12 @@ details.setup summary { cursor: pointer; font-weight: 700; }
 .even .ghost { padding: 7px 12px; }
 
 .legend { display: grid; gap: 6px; margin-top: 14px; }
+.gradin { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.gradin input { font-family: var(--font-num); }
+.hist { display: flex; align-items: flex-end; gap: 2px; height: 64px; }
+.hist i { flex: 1; min-height: 2px; border-radius: 2px 2px 0 0; }
+.gradbar { height: 12px; border-radius: 6px; }
+.gradlbl { display: flex; justify-content: space-between; font-family: var(--font-num); font-size: .78rem; color: var(--muted); }
 .lg { display: grid; grid-template-columns: 34px minmax(0, 1fr) auto; gap: 2px 10px; align-items: center; }
 .lg input[type="color"] { grid-row: 1 / span 2; width: 34px; height: 34px; padding: 0; border: 1px solid var(--line); border-radius: 8px; background: none; cursor: pointer; }
 .lg .name { font-family: var(--font-num); font-size: .9rem; font-weight: 700; }
@@ -340,13 +346,26 @@ td.top { color: var(--forest); font-weight: 700; }
         <button type="button" data-unit="pace">ペース（分/km）</button>
         <button type="button" data-unit="kmh">速度（km/h）</button>
       </div>
-      <label class="field"><span>区切り</span><input type="text" id="bounds" autocomplete="off" spellcheck="false"></label>
-      <div class="hint" id="boundsMsg"></div>
-      <div class="even">
-        <span>等間隔で</span>
-        <input type="text" id="evFrom" aria-label="から">〜<input type="text" id="evTo" aria-label="まで">
-        <span>刻み</span><input type="text" id="evStep" aria-label="刻み">
-        <button class="ghost" type="button" id="evBtn">作る</button>
+      <div class="seg" role="group" aria-label="塗り方" style="margin-top:8px">
+        <button type="button" data-mode="grad">グラデーション</button>
+        <button type="button" data-mode="band">区切り</button>
+      </div>
+      <div id="gradOpts">
+        <div class="gradin">
+          <label class="field"><span>速い（緑）</span><input type="text" id="gradFast" autocomplete="off" spellcheck="false"></label>
+          <label class="field"><span>遅い（赤）</span><input type="text" id="gradSlow" autocomplete="off" spellcheck="false"></label>
+        </div>
+        <div class="hint" id="gradMsg">この間を緑 → 黄 → 赤でなめらかに塗ります（QuickRoute と同じ色の向き）。</div>
+      </div>
+      <div id="bandOpts">
+        <label class="field"><span>区切り</span><input type="text" id="bounds" autocomplete="off" spellcheck="false"></label>
+        <div class="hint" id="boundsMsg"></div>
+        <div class="even">
+          <span>等間隔で</span>
+          <input type="text" id="evFrom" aria-label="から">〜<input type="text" id="evTo" aria-label="まで">
+          <span>刻み</span><input type="text" id="evStep" aria-label="刻み">
+          <button class="ghost" type="button" id="evBtn">作る</button>
+        </div>
       </div>
       <div class="legend" id="legend"></div>
     </section>
@@ -435,7 +454,10 @@ let ctrls = [];            // コントロール（コース順）{ id, q: 地�
 let history = [], insertAt = -1;
 let view = { k: 1, x: 0, y: 0 };
 let mode = "idle", pendingI = -1, probeI = -1;
-let unit = "pace", th = [6, 7.5, 3600 / 390, 3600 / 330, 3600 / 270], colorOverride = {};
+let unit = "pace", bandTh = [6, 7.5, 3600 / 390, 3600 / 330, 3600 / 270], th = bandTh, colorOverride = {};
+// グラデーション：遅い（赤）〜速い（緑）を GRAD_BINS 段に細かく分けて塗る。区切り式と同じ仕組みで描ける
+const GRAD_BINS = 24, GRAD = ["#d7301f", "#f59a23", "#f7d13d", "#8cc63f", "#1a9850"];
+let colorMode = "grad", gradFast = 3600 / 240, gradSlow = 3600 / 600;   // km/h（4:00/km 〜 10:00/km）
 let ra = 0, rb = 1;
 let exportFile = null;
 // 保存の単位。id が null なら未保存
@@ -723,13 +745,14 @@ function cssVar(name) { return getComputedStyle(document.documentElement).getPro
 
 function hexToRgb(h) { const n = parseInt(h.slice(1), 16); return [n >> 16, n >> 8 & 255, n & 255]; }
 function rgbToHex(c) { return "#" + c.map(v => Math.round(v).toString(16).padStart(2, "0")).join(""); }
-function rampColor(f) {
-  const p = f * (RAMP.length - 1), i = Math.min(RAMP.length - 2, Math.floor(p)), u = p - i;
-  const a = hexToRgb(RAMP[i]), b = hexToRgb(RAMP[i + 1]);
+function rampColor(f, stops = RAMP) {
+  const p = f * (stops.length - 1), i = Math.min(stops.length - 2, Math.floor(p)), u = p - i;
+  const a = hexToRgb(stops[i]), b = hexToRgb(stops[i + 1]);
   return rgbToHex(a.map((v, k) => v + (b[k] - v) * u));
 }
 function bandColors() {
   const n = th.length + 1;
+  if (colorMode === "grad") return Array.from({ length: n }, (_, b) => rampColor(b / (n - 1), GRAD));
   return Array.from({ length: n }, (_, b) => colorOverride[b] || rampColor(n === 1 ? .5 : b / (n - 1)));
 }
 
@@ -1004,16 +1027,50 @@ $("fitBtn").addEventListener("click", () => (zoomLeg && !$("zoom").hidden ? fitL
 /* ---------- 色分けの設定 ---------- */
 
 function boundsText() {
-  const list = th.map(fmtVal);
+  const list = bandTh.map(fmtVal);
   return (unit === "pace" ? list.reverse() : list).join(", ");
+}
+
+// グラデーションの段の境目。ペース表示ならペースで、km/h 表示なら速度で等間隔に分ける
+function gradThresholds() {
+  const out = [];
+  for (let k = 1; k < GRAD_BINS; k++) {
+    const f = k / GRAD_BINS;
+    out.push(unit === "pace" ? 3600 / (3600 / gradSlow + (3600 / gradFast - 3600 / gradSlow) * f) : gradSlow + (gradFast - gradSlow) * f);
+  }
+  return out.sort((a, b) => a - b);
+}
+
+function applyColorMode() {
+  th = colorMode === "grad" ? gradThresholds() : bandTh;
+  $("gradOpts").hidden = colorMode !== "grad"; $("bandOpts").hidden = colorMode !== "band";
+  for (const b of document.querySelectorAll("[data-mode]")) b.setAttribute("aria-pressed", String(b.dataset.mode === colorMode));
+  $("gradFast").value = fmtVal(gradFast); $("gradSlow").value = fmtVal(gradSlow);
+  computeBands(); exportFile = null;
+  renderLegend(); draw(); syncExport();
+}
+for (const b of document.querySelectorAll("[data-mode]")) b.addEventListener("click", () => { colorMode = b.dataset.mode; applyColorMode(); });
+
+for (const id of ["gradFast", "gradSlow"]) {
+  $(id).addEventListener("input", () => {
+    const v = parseVal($(id).value), msg = $("gradMsg");
+    if (!Number.isFinite(v)) { msg.textContent = unit === "pace" ? "「4:00」の形で入れてください。" : "数字で入れてください。"; msg.className = "hint err"; return; }
+    const fast = id === "gradFast" ? v : gradFast, slow = id === "gradSlow" ? v : gradSlow;
+    if (!(fast > slow)) { msg.textContent = "「速い」は「遅い」より速い値にしてください。"; msg.className = "hint err"; return; }
+    gradFast = fast; gradSlow = slow;
+    msg.textContent = "この間を緑 → 黄 → 赤でなめらかに塗ります（QuickRoute と同じ色の向き）。"; msg.className = "hint";
+    const keep = [$("gradFast").value, $("gradSlow").value];
+    applyColorMode();
+    [$("gradFast").value, $("gradSlow").value] = keep;   // 入力中の文字は書き換えない
+  });
+  $(id).addEventListener("change", () => { $("gradFast").value = fmtVal(gradFast); $("gradSlow").value = fmtVal(gradSlow); });
 }
 
 function setBounds(list) {
   const uniq = [...new Set(list.map(v => Math.round(v * 1000) / 1000))].sort((a, b) => a - b);
-  if (uniq.length !== th.length) colorOverride = {};
-  th = uniq.slice(0, MAX_BOUNDS);
-  computeBands(); exportFile = null;
-  renderLegend(); draw(); syncExport();
+  if (uniq.length !== bandTh.length) colorOverride = {};
+  bandTh = uniq.slice(0, MAX_BOUNDS);
+  applyColorMode();
 }
 
 $("bounds").addEventListener("input", () => {
@@ -1035,7 +1092,7 @@ function setUnit(u) {
   $("boundsMsg").textContent = u === "pace" ? "例：4:30, 5:30, 6:30, 8:00, 10:00（区切りの数＋1色で塗り分け）" : "例：6, 8, 10, 12, 14（区切りの数＋1色で塗り分け）";
   $("boundsMsg").className = "hint";
   [$("evFrom").value, $("evTo").value, $("evStep").value] = u === "pace" ? ["4:00", "9:00", "1:00"] : ["6", "14", "2"];
-  renderLegend(); showProbe(); refreshRangeLabels();
+  applyColorMode(); showProbe(); refreshRangeLabels();
   try { localStorage.setItem("routeUnit", u); } catch {}
 }
 for (const b of document.querySelectorAll("[data-unit]")) b.addEventListener("click", () => setUnit(b.dataset.unit));
@@ -1088,6 +1145,17 @@ function renderLegend() {
   const box = $("legend"), cols = bandColors(), { time, dist } = bandStats();
   const total = time.reduce((s, v) => s + v, 0) || 1;
   box.innerHTML = "";
+  if (colorMode === "grad") {
+    // QuickRoute のヒストグラムのように、どの速さで何分走ったかを同じ色の棒で
+    const max = Math.max(...time) || 1, u = unit === "pace" ? "/km" : "km/h";
+    box.innerHTML = (track && track.hasTime
+      ? `<div class="hist">${cols.map((c, b) => `<i style="height:${time[b] / max * 100}%;background:${c}" title="${esc(bandLabel(b))} ${fmtDur(time[b])}"></i>`).join("")}</div>` : "")
+      + `<div class="gradbar" style="background:linear-gradient(90deg, ${GRAD.join(", ")})"></div>
+      <div class="gradlbl"><span>${fmtVal(gradSlow)}${u} より遅い</span><span>${fmtVal(gradFast)}${u} より速い</span></div>`
+      + (track && track.hasTime ? '<div class="hint" style="margin-top:0">棒の高さ＝その速さで走った時間</div>' : "");
+    if (track && !track.hasTime) box.insertAdjacentHTML("beforeend", '<div class="hint err">このGPXには時刻がないので、速度で色分けできません。</div>');
+    return;
+  }
   for (let b = th.length; b >= 0; b--) {
     const row = document.createElement("div");
     row.className = "lg";
@@ -1171,7 +1239,7 @@ $("rangeA").addEventListener("input", onRange);
 $("rangeB").addEventListener("input", onRange);
 
 function refreshSliderLabels() {
-  $("smLbl").textContent = `前後${$("smooth").value}秒`;
+  $("smLbl").textContent = `${$("smooth").value}秒の平均`;
   $("lwLbl").textContent = `${$("lw").value}px`;
   $("opLbl").textContent = `${$("op").value}%`;
   $("alLbl").textContent = `${$("alpha").value}%`;
@@ -1310,6 +1378,23 @@ function drawLegend(c, cw, ch) {
   const { t, d, hasTime } = track;
   const title = `${$("title").value || track.name}  ${((d[rb] - d[ra]) / 1000).toFixed(2)}km${hasTime ? "  " + fmtDur(t[rb] - t[ra]) : ""}`;
   c.font = `700 ${fs}px "Zen Kaku Gothic New", "Hiragino Sans", sans-serif`;
+  if (colorMode === "grad") {
+    // 題名の下にグラデーションの帯と、両端のペース
+    const u = unit === "pace" ? "/km" : "km/h", slow = `${fmtVal(gradSlow)}${u}`, fast = `${fmtVal(gradFast)}${u}`;
+    const w = Math.max(c.measureText(title).width, fs * 14) + pad_ * 2, h = row * 3 + pad_ * 2;
+    const x = pad_, y = ch - h - pad_;
+    c.fillStyle = "rgba(255,255,255,.92)"; c.fillRect(x, y, w, h);
+    c.strokeStyle = "rgba(0,0,0,.25)"; c.lineWidth = 1; c.strokeRect(x + .5, y + .5, w - 1, h - 1);
+    c.fillStyle = "#1d241c"; c.textBaseline = "middle";
+    c.fillText(title, x + pad_, y + pad_ + row / 2);
+    const g = c.createLinearGradient(x + pad_, 0, x + w - pad_, 0);
+    GRAD.forEach((col, i) => g.addColorStop(i / (GRAD.length - 1), col));
+    c.fillStyle = g; c.fillRect(x + pad_, y + pad_ + row * 1.15, w - pad_ * 2, fs * .8);
+    c.fillStyle = "#1d241c"; c.font = `500 ${fs}px "Zen Kaku Gothic New", "Hiragino Sans", sans-serif`;
+    c.fillText(slow, x + pad_, y + pad_ + row * 2.5);
+    c.textAlign = "right"; c.fillText(fast, x + w - pad_, y + pad_ + row * 2.5); c.textAlign = "left";
+    return;
+  }
   const w = Math.max(c.measureText(title).width, ...rows.map(r => c.measureText(r[1] + "  " + r[2]).width + fs * 1.6)) + pad_ * 2;
   const h = row * (rows.length + 1) + pad_ * 2;
   const x = pad_, y = ch - h - pad_;
@@ -1429,7 +1514,7 @@ function syncSave() {
 }
 
 function collectSettings() {
-  return { lap: route.lap, pairs, ctrls: ctrls.map(c => ({ id: c.id, q: c.q, ...(c.fix != null ? { fix: c.fix } : {}) })), ra, rb, th, colorOverride, A, B, W, H, smooth: +$("smooth").value, lw: +$("lw").value, op: +$("op").value, alpha: +$("alpha").value, halo: $("halo").checked };
+  return { lap: route.lap, pairs, ctrls: ctrls.map(c => ({ id: c.id, q: c.q, ...(c.fix != null ? { fix: c.fix } : {}) })), ra, rb, th: bandTh, colorMode, gradFast, gradSlow, colorOverride, A, B, W, H, smooth: +$("smooth").value, lw: +$("lw").value, op: +$("op").value, alpha: +$("alpha").value, halo: $("halo").checked };
 }
 
 async function makeThumb() {
@@ -1528,7 +1613,10 @@ async function openRoute(id) {
 }
 
 function applySettings(s) {
-  pairs = s.pairs || []; th = s.th || th; colorOverride = s.colorOverride || {};
+  pairs = s.pairs || []; bandTh = s.th || bandTh; colorOverride = s.colorOverride || {};
+  // 色の塗り方が保存されていない（グラデーション追加前の）ものは区切り式のまま
+  colorMode = s.colorMode || "band"; gradFast = s.gradFast || gradFast; gradSlow = s.gradSlow || gradSlow;
+  th = colorMode === "grad" ? gradThresholds() : bandTh;
   route.lap = s.lap || null; lapAll = null;
   // コントロールを分ける前に保存したものは、合わせ点を通った順にコントロールとみなす（反省の対応を保つ）
   ctrls = s.ctrls ? s.ctrls.map(c => ({ id: c.id, q: { ...c.q }, fix: c.fix }))
@@ -1542,7 +1630,7 @@ function applySettings(s) {
   $("imgLabel").classList.toggle("done", !!img); $("gpxLabel").classList.add("done");
   $("bounds").value = boundsText();
   mode = "idle"; pendingI = -1; probeI = -1;
-  refreshSliderLabels(); computeSpeed();
+  refreshSliderLabels(); computeSpeed(); applyColorMode();
   if (s.A && s.B) { A = s.A; B = s.B; project(); } else solvePairs();
 }
 
@@ -1550,6 +1638,7 @@ function resetRoute() {
   route = { id: null, title: "", date: "", activityId: null, notes: {}, lap: null };
   lapAll = null; img = null; track = null; pairs = []; ctrls = []; history = []; insertAt = -1; mapBlob = null; W = H = 2000; trackDirty = mapDirty = false;
   mode = "idle"; pendingI = -1; probeI = -1;
+  colorMode = "grad"; applyColorMode();   // 新しく作るときはグラデーションから
   $("title").value = ""; $("raceDate").value = ""; $("imgFile").value = ""; $("gpxFile").value = "";
   $("imgLabel").classList.remove("done"); $("gpxLabel").classList.remove("done");
   for (const b of $("icuList").children) b.setAttribute("aria-pressed", "false");
