@@ -293,9 +293,18 @@ td.top { color: var(--forest); font-weight: 700; }
       </section>
       <section class="stack">
         <h2>GPX</h2>
-        <div id="icuBox" hidden>
-          <div class="hint" style="margin-top:0">Intervals.icu の記録（直近7日）から選ぶ</div>
+        <div id="icuBox">
+          <div class="hint" style="margin-top:0" id="icuHint">Intervals.icu の記録（直近7日）から選ぶ</div>
           <div id="icuList" class="icu"></div>
+          <details class="setup" id="icuSetup" style="margin-top:10px">
+            <summary>Intervals.icu の接続設定 <small class="sumnote" id="icuSum"></small></summary>
+            <div class="form">
+              <label>Athlete ID<input type="text" id="icuAid" placeholder="i123456" autocomplete="off" spellcheck="false"></label>
+              <label>API Key<input type="password" id="icuKey" placeholder="Settings › Developer Settings" autocomplete="off"></label>
+              <div class="row"><button class="ghost" type="button" id="icuSave">接続して記録を読み込む</button></div>
+              <div class="hint">練習メモと同じ値です。この端末に保存され、練習メモ側の設定としても使われます。</div>
+            </div>
+          </details>
         </div>
         <label class="filebtn" id="gpxLabel">GPXファイルを選ぶ<small>.gpx</small><input type="file" id="gpxFile" accept=".gpx,application/gpx+xml,application/xml,text/xml"></label>
       </section>
@@ -1351,11 +1360,11 @@ $("gpxFile").addEventListener("change", async e => {
 function loadCfg() {
   try { return JSON.parse(localStorage.getItem("intervalsCfg")) || {}; } catch { return {}; }
 }
-const cfg = loadCfg();
+let cfg = loadCfg();
 
 async function icu(path) {
   const res = await fetch(API + path, { headers: { Authorization: "Basic " + btoa("API_KEY:" + cfg.key) } });
-  if (res.status === 401 || res.status === 403) throw new Error("Intervals.icu に接続できません。練習メモの接続設定を確認してください。");
+  if (res.status === 401 || res.status === 403) throw new Error("Intervals.icu に接続できません。Athlete ID と API Key を確認してください。");
   if (!res.ok) throw new Error(`Intervals.icu がエラーを返しました（${res.status}）。`);
   return res;
 }
@@ -1376,16 +1385,35 @@ async function loadActivity(a, label) {
 }
 
 const WD = "日月火水木金土";
+function icuState(ok) {
+  $("icuHint").hidden = $("icuList").hidden = !ok;
+  $("icuSum").textContent = ok ? "接続済み" : "未設定";
+  $("icuSum").className = "sumnote" + (ok ? " ok" : " err");
+  $("icuSetup").open = !ok;
+}
+
+$("icuAid").value = cfg.aid || "";
+$("icuKey").value = cfg.key || "";
+$("icuSave").addEventListener("click", () => {
+  const aid = $("icuAid").value.trim(), key = $("icuKey").value.trim();
+  if (!aid || !key) { loadMsg("Athlete ID と API Key を入れてください。", true); return; }
+  cfg = { ...loadCfg(), aid, key };
+  try { localStorage.setItem("intervalsCfg", JSON.stringify(cfg)); } catch {}
+  loadMsg("");
+  loadIcuList();
+});
+
 async function loadIcuList() {
   if (!cfg.aid || !cfg.key) {
+    icuState(false);
     // 練習メモの「ルート図を作る」から来たのに、このブラウザに接続設定がない（ホーム画面版と Safari は別扱い）
     if (/^#act-/.test(startHash)) {
       showView("edit"); showStep("load");
-      loadMsg("このブラウザには Intervals.icu の接続設定がありません。このブラウザで練習メモを開いて接続設定をしてから、もう一度「ルート図を作る」を押してください。", true);
+      loadMsg("この端末では Intervals.icu に未接続です。下の「Intervals.icu の接続設定」を入れると、記録を自動で読み込みます。", true);
     }
     return;
   }
-  $("icuBox").hidden = false;
+  icuState(true);
   const box = $("icuList");
   box.innerHTML = '<span class="hint">読み込み中…</span>';
   try {
@@ -1411,7 +1439,10 @@ async function loadIcuList() {
       showView("edit"); showStep("load");
       if (b) b.click(); else loadActivity({ id }, id);
     }
-  } catch (err) { box.innerHTML = ""; loadMsg(err.message, true); }
+  } catch (err) {
+    box.innerHTML = ""; loadMsg(err.message, true);
+    if (/接続できません/.test(err.message)) icuState(false);
+  }
 }
 
 /* ---------- 画像にする ---------- */
