@@ -98,6 +98,9 @@ input[type="range"] { width: 100%; accent-color: var(--accent); }
 .chip.loss { background: color-mix(in srgb, var(--warn) 15%, transparent); color: var(--warn); }
 details.setup { border: 1px solid var(--line); border-radius: 12px; background: var(--surface); padding: 10px 14px; }
 details.setup summary { cursor: pointer; font-weight: 700; }
+.sumnote { font-weight: 400; font-size: .8rem; color: var(--muted); margin-left: 6px; }
+.sumnote.ok { color: var(--forest); }
+.sumnote.err { color: var(--warn); }
 .form { display: grid; gap: 10px; margin-top: 10px; }
 .form label { display: grid; gap: 4px; font-size: .85rem; font-weight: 700; }
 .row { display: flex; gap: 8px; flex-wrap: wrap; }
@@ -330,13 +333,15 @@ td.top { color: var(--forest); font-weight: 700; }
       <div class="hint" id="alignMsg"></div>
     </section>
 
-    <section>
-      <h2>コントロール（レッグの区切り）</h2>
-      <div class="hint" style="margin-top:0">「コントロール」を押して、1, 2, 3… の順に丸の中心をタップ。</div>
-      <div class="hint" id="ctrlTarget"></div>
-      <div class="stack" id="ctrlList" style="margin-top:8px"></div>
-      <div class="row" style="margin-top:8px"><button class="ghost" type="button" id="pairsToCtrl" disabled>合わせ点をすべてコントロールにする</button></div>
-    </section>
+    <details class="setup" id="ctrlBox">
+      <summary>コントロールの一覧 <small class="sumnote" id="ctrlSum"></small></summary>
+      <div class="stack" style="margin-top:10px">
+        <div class="hint" style="margin-top:0">地図の「コントロール」を押して、1, 2, 3… の順に丸の中心をタップ。</div>
+        <div class="hint" id="ctrlTarget" style="margin-top:0"></div>
+        <div class="stack" id="ctrlList"></div>
+        <div class="row"><button class="ghost" type="button" id="pairsToCtrl" disabled>合わせ点をすべてコントロールにする</button></div>
+      </div>
+    </details>
 
     <details class="setup">
     <summary>色分けと表示の設定</summary>
@@ -1243,6 +1248,11 @@ function renderCtrlList() {
   const codes = route.lap?.cls.codes || [];
   $("ctrlTarget").textContent = codes.length ? (codes.length === ctrls.length ? `✓ ラップと同じ${codes.length}個です。` : `ラップのコントロールは${codes.length}個です（今${ctrls.length}個）。同じ数にするとラップと結び付きます。`) : "";
   $("ctrlTarget").className = "hint" + (codes.length && codes.length === ctrls.length ? " ok" : "");
+  // たたんでいても要点が分かるよう、見出しに個数とラップとの一致を出す
+  const far = track ? ctrls.filter(c => c.off > CTRL_NEAR_M).length : 0;
+  $("ctrlSum").textContent = `${ctrls.length}個` + (codes.length ? (codes.length === ctrls.length ? " ✓ラップと同じ" : ` ／ ラップは${codes.length}個`) : "")
+    + (far ? ` ・ 位置を確認${far}個` : "");
+  $("ctrlSum").className = "sumnote" + (far || (codes.length && codes.length !== ctrls.length) ? " err" : codes.length ? " ok" : "");
   if (!track || !ctrls.length) { box.innerHTML = ""; return; }
   box.innerHTML = ctrls.map((c, k) => {
     const far = c.off > CTRL_NEAR_M, t = track.hasTime && c.i >= 0 ? `通過 ${fmtDur(track.t[c.i] - track.t[ra])}` : "";
