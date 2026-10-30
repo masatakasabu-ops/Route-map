@@ -390,7 +390,7 @@ td.top { color: var(--forest); font-weight: 700; }
       <summary>画像として書き出す</summary>
       <div class="stack" style="margin-top:12px">
         <button class="ghost" type="button" id="expBtn" disabled>画像を作る</button>
-        <div class="hint" id="expMsg">いま画面で見ている線の太さのまま、地図全体を1枚の画像にします。</div>
+        <div class="hint" id="expMsg">地図全体を1枚の画像にします。線は地図に描いた太さのまま書き出します。</div>
       </div>
     </details>
 
@@ -825,6 +825,10 @@ function drawScene(c, lw) {
   drawCourse(c, lw * 3.5, lw * .6, { labels: false });
 }
 
+// ルートの線の太さ（画像座標）。地図に描いた線として扱い、拡大・縮小や画像の書き出しで太さが変わらないようにする。
+// 「線の太さ」の値は、地図の長い辺を 400 に縮めたときの太さ（スマホで全体表示したときの見た目に近い）
+function lineW() { return Number($("lw").value) * Math.max(W, H) / 400; }
+
 function render() {
   const dpr = window.devicePixelRatio || 1;
   ctx.setTransform(1, 0, 0, 1, 0, 0);
@@ -836,8 +840,8 @@ function render() {
   drawMap(ctx);
   if (!track) return;
   const zl = $("zoom").hidden ? null : zoomLeg;
-  if (zl) { strokeTrack(ctx, Number($("lw").value) * u, ra, rb, true); strokeTrack(ctx, Number($("lw").value) * u, zl.from.i, zl.to.i); }
-  else strokeTrack(ctx, Number($("lw").value) * u, ra, rb);
+  if (zl) { strokeTrack(ctx, lineW(), ra, rb, true); strokeTrack(ctx, lineW(), zl.from.i, zl.to.i); }
+  else strokeTrack(ctx, lineW(), ra, rb);
   drawCourse(ctx, 13 * u, 2.2 * u, { only: zl?.key });
   // 合わせ点は青い十字。軌跡のその点と細い線で結ぶ（ずれの確認用）。画像の書き出しには描かない
   const { ix, iy } = track;
@@ -1424,7 +1428,7 @@ async function makeImage() {
     c.width = Math.round(W * scale); c.height = Math.round(H * scale);
     const x = c.getContext("2d");
     x.setTransform(scale, 0, 0, scale, 0, 0);
-    drawScene(x, Number($("lw").value) / view.k);
+    drawScene(x, lineW());
     x.setTransform(1, 0, 0, 1, 0, 0);
     drawLegend(x, c.width, c.height);
     const type = img ? "image/jpeg" : "image/png";
