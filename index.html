@@ -377,7 +377,7 @@ td.top { color: var(--forest); font-weight: 700; }
         <div class="sl"><div><span>おわり（ゴール）</span><b id="bLbl"></b></div><input type="range" id="rangeB" min="0" max="1" value="1"></div>
         <div class="summary" id="summary"></div>
         <div class="sl"><div><span>速度のならし</span><b id="smLbl"></b></div><input type="range" id="smooth" min="1" max="30" value="8"></div>
-        <div class="sl"><div><span>線の太さ</span><b id="lwLbl"></b></div><input type="range" id="lw" min="1" max="10" step="0.5" value="3"></div>
+        <div class="sl"><div><span>線の太さ</span><b id="lwLbl"></b></div><input type="range" id="lw" min="0.5" max="10" step="0.5" value="3"></div>
         <div class="sl"><div><span>線の濃さ（透過）</span><b id="alLbl"></b></div><input type="range" id="alpha" min="15" max="100" value="100"></div>
         <div class="sl"><div><span>地図の濃さ</span><b id="opLbl"></b></div><input type="range" id="op" min="20" max="100" value="100"></div>
         <label class="check"><input type="checkbox" id="halo" checked>線を白で縁取る（地図の色と見分けやすく）</label>
@@ -825,7 +825,7 @@ function drawScene(c, lw) {
   drawCourse(c, lw * 3.5, lw * .6, { labels: false });
 }
 
-// ルートの線の太さ（画像座標）。地図に描いた線として扱い、拡大・縮小や画像の書き出しで太さが変わらないようにする。
+// ルートの線の太さ（画像座標）。地図に描いた線として扱い、画像の書き出しでは画面の拡大に関係なく同じ太さにする。
 // 「線の太さ」の値は、地図の長い辺を 400 に縮めたときの太さ（スマホで全体表示したときの見た目に近い）
 function lineW() { return Number($("lw").value) * Math.max(W, H) / 400; }
 
@@ -840,8 +840,10 @@ function render() {
   drawMap(ctx);
   if (!track) return;
   const zl = $("zoom").hidden ? null : zoomLeg;
-  if (zl) { strokeTrack(ctx, lineW(), ra, rb, true); strokeTrack(ctx, lineW(), zl.from.i, zl.to.i); }
-  else strokeTrack(ctx, lineW(), ra, rb);
+  // 拡大（ピンチアウト）しても全体表示のときより太くはしない。縮小したときは地図と一緒に細くする
+  const lw = lineW() * Math.min(view.k, fitScale()) / view.k;
+  if (zl) { strokeTrack(ctx, lw, ra, rb, true); strokeTrack(ctx, lw, zl.from.i, zl.to.i); }
+  else strokeTrack(ctx, lw, ra, rb);
   drawCourse(ctx, 13 * u, 2.2 * u, { only: zl?.key });
   // 合わせ点は青い十字。軌跡のその点と細い線で結ぶ（ずれの確認用）。画像の書き出しには描かない
   const { ix, iy } = track;
