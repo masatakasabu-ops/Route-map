@@ -296,15 +296,6 @@ td.top { color: var(--forest); font-weight: 700; }
         <div id="icuBox">
           <div class="hint" style="margin-top:0" id="icuHint">Intervals.icu の記録（直近7日）から選ぶ</div>
           <div id="icuList" class="icu"></div>
-          <details class="setup" id="icuSetup" style="margin-top:10px">
-            <summary>Intervals.icu の接続設定 <small class="sumnote" id="icuSum"></small></summary>
-            <div class="form">
-              <label>Athlete ID<input type="text" id="icuAid" placeholder="i123456" autocomplete="off" spellcheck="false"></label>
-              <label>API Key<input type="password" id="icuKey" placeholder="Settings › Developer Settings" autocomplete="off"></label>
-              <div class="row"><button class="ghost" type="button" id="icuSave">接続して記録を読み込む</button></div>
-              <div class="hint">練習メモと同じ値です。この端末に保存され、練習メモ側の設定としても使われます。</div>
-            </div>
-          </details>
         </div>
         <label class="filebtn" id="gpxLabel">GPXファイルを選ぶ<small>.gpx</small><input type="file" id="gpxFile" accept=".gpx,application/gpx+xml,application/xml,text/xml"></label>
       </section>
@@ -321,6 +312,15 @@ td.top { color: var(--forest); font-weight: 700; }
       </section>
       <div class="hint" id="loadMsg"></div>
       <button class="primary" type="button" id="nextBtn" disabled>次へ：地図に合わせる</button>
+      <details class="setup" id="icuSetup">
+        <summary>Intervals.icu の接続設定 <small class="sumnote" id="icuSum"></small></summary>
+        <div class="form">
+          <label>Athlete ID<input type="text" id="icuAid" placeholder="i123456" autocomplete="off" spellcheck="false"></label>
+          <label>API Key<input type="password" id="icuKey" placeholder="Settings › Developer Settings" autocomplete="off"></label>
+          <div class="row"><button class="ghost" type="button" id="icuSave">接続して記録を読み込む</button></div>
+          <div class="hint">練習メモと同じ値です。この端末に保存され、練習メモ側の設定としても使われます。</div>
+        </div>
+      </details>
     </div>
 
     <!-- ② 地図合わせ -->
@@ -1386,7 +1386,8 @@ async function loadActivity(a, label) {
 
 const WD = "日月火水木金土";
 function icuState(ok) {
-  $("icuHint").hidden = $("icuList").hidden = !ok;
+  $("icuList").hidden = !ok;
+  $("icuHint").textContent = ok ? "Intervals.icu の記録（直近7日）から選ぶ" : "一番下の「Intervals.icu の接続設定」を入れると、記録から選べます";
   $("icuSum").textContent = ok ? "接続済み" : "未設定";
   $("icuSum").className = "sumnote" + (ok ? " ok" : " err");
   $("icuSetup").open = !ok;
@@ -1409,7 +1410,7 @@ async function loadIcuList() {
     // 練習メモの「ルート図を作る」から来たのに、このブラウザに接続設定がない（ホーム画面版と Safari は別扱い）
     if (/^#act-/.test(startHash)) {
       showView("edit"); showStep("load");
-      loadMsg("この端末では Intervals.icu に未接続です。下の「Intervals.icu の接続設定」を入れると、記録を自動で読み込みます。", true);
+      loadMsg("この端末では Intervals.icu に未接続です。一番下の「Intervals.icu の接続設定」を入れると、記録を自動で読み込みます。", true);
     }
     return;
   }
