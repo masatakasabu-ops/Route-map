@@ -227,7 +227,7 @@ td.top { color: var(--forest); font-weight: 700; }
 .zoom .zh { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
 .zoom .zh b { font-family: var(--font-num); color: var(--overprint); }
 .zoom .stage { height: auto; }
-.zoom #pairBtn, .zoom #ctrlBtn, .zoom #undoBtn { display: none; }
+.zoom #pairBtn, .zoom #ctrlBtn, .zoom #undoBtn, .zoom #redoBtn { display: none; }
 .cl { display: grid; grid-template-columns: 2em minmax(0, 1fr) auto auto; gap: 8px; align-items: center; font-size: .85rem; }
 .cl b { font-family: var(--font-num); color: var(--overprint); font-size: 1.05rem; text-align: center; }
 .cl span { font-family: var(--font-num); min-width: 0; }
@@ -321,7 +321,8 @@ td.top { color: var(--forest); font-weight: 700; }
         <div class="toolbar">
           <button class="ghost" type="button" id="pairBtn" disabled>合わせ点</button>
           <button class="ghost" type="button" id="ctrlBtn" disabled>コントロール</button>
-          <button class="ghost" type="button" id="undoBtn" disabled>1つ戻す</button>
+          <button class="ghost" type="button" id="undoBtn" disabled aria-label="1つ戻す">↶ 戻す</button>
+          <button class="ghost" type="button" id="redoBtn" disabled aria-label="1つ進む">↷ 進む</button>
           <button class="ghost" type="button" id="fitBtn">全体</button>
         </div>
       </div>
@@ -331,7 +332,7 @@ td.top { color: var(--forest); font-weight: 700; }
 
     <section>
       <h2>コントロール（レッグの区切り）</h2>
-      <div class="hint" style="margin-top:0">地図に合わせ終わったら「コントロール」を押し、1, 2, 3… の順に地図の丸の中心をタップします。通過した時刻は軌跡から自動で探します。</div>
+      <div class="hint" style="margin-top:0">「コントロール」を押して、1, 2, 3… の順に丸の中心をタップ。</div>
       <div class="hint" id="ctrlTarget"></div>
       <div class="stack" id="ctrlList" style="margin-top:8px"></div>
       <div class="row" style="margin-top:8px"><button class="ghost" type="button" id="pairsToCtrl" disabled>合わせ点をすべてコントロールにする</button></div>
@@ -451,7 +452,7 @@ let track = null;          // { name, n, raw, px, py, t, d, up, v, band, ix, iy,
 let A = { re: 1, im: 0 }, B = { re: 0, im: 0 };  // 画像座標 = A × 軌跡座標 + B（複素数で回転・縮尺・移動）
 let pairs = [];            // 位置合わせの点 { id, i: 軌跡の点, q: 画像上の位置 }
 let ctrls = [];            // コントロール（コース順）{ id, q: 地図上の位置 }。i（通過した軌跡の点）は assignCtrls で決める
-let history = [], insertAt = -1;
+let history = [], redoStack = [], insertAt = -1;   // 置いた順の記録と、「戻す」で外した点（「進む」で戻す）
 let view = { k: 1, x: 0, y: 0 };
 let mode = "idle", pendingI = -1, probeI = -1;
 let unit = "pace", bandTh = [6, 7.5, 3600 / 390, 3600 / 330, 3600 / 270], th = bandTh, colorOverride = {};
@@ -566,7 +567,7 @@ function trackFromJson(j) {
 
 function setTrack(tr) {
   track = tr; trackDirty = true;
-  pairs = []; ctrls = []; history = []; insertAt = -1; mode = "idle"; pendingI = -1; probeI = -1; exportFile = null;
+  pairs = []; ctrls = []; history = []; redoStack = []; insertAt = -1; mode = "idle"; pendingI = -1; probeI = -1; exportFile = null;
   ra = 0; rb = tr.n - 1;
   $("rangeA").max = $("rangeB").max = tr.n - 1;
   $("rangeA").value = ra; $("rangeB").value = rb;
@@ -691,14 +692,13 @@ function solvePairs() {
 }
 
 function alignText() {
-  if (!track) return "軌跡をタップすると、その地点の速度が出ます。2本指で拡大、ドラッグで移動。";
-  if (!img) return "地図の画像を読み込むと、軌跡を地図に合わせられます。";
-  if (!pairs.length) return "いまは北を上にして置いただけです。まず「合わせ点」で、道の分岐やコントロールなど場所のはっきりした点を2〜3か所、なるべく離して合わせてください。向きと縮尺も合います。";
-  if (pairs.length === 1) return "合わせ点1か所：位置だけ合わせています。もう1か所以上で向きと縮尺も合います。";
+  if (!track) return "軌跡をタップでその地点の速さ。2本指で拡大。";
+  if (!img) return "地図の画像を読み込むと、位置を合わせられます。";
+  if (!pairs.length) return "「合わせ点」で、地図と2〜3か所を離して合わせます。";
+  if (pairs.length === 1) return "合わせ点 1 ・ あと1か所で向きと縮尺も合います";
   const scale = Math.hypot(A.re, A.im);
   const rms = Math.sqrt(pairs.reduce((s, p) => s + (track.ix[p.i] - p.q.x) ** 2 + (track.iy[p.i] - p.q.y) ** 2, 0) / pairs.length);
-  const rot = Math.round(Math.atan2(A.im, A.re) * 180 / Math.PI);
-  return `合わせ点${pairs.length}か所：ずれ 平均${Math.round(rms / scale)}m ・ 回転${rot}° ・ 地図1pxあたり${(1 / scale).toFixed(2)}m。ずれが大きい点は「1つ戻す」で外せます。`;
+  return `合わせ点 ${pairs.length} ・ ずれ ${Math.round(rms / scale)}m`;
 }
 
 /* ---------- レッグ ---------- */
@@ -817,12 +817,20 @@ function drawCourse(c, r, w, opts = {}) {
   });
 }
 
+// コース記号の円の半径（画像座標）。本物の地図の円（ISOM：1:15,000 で直径6mm＝地面で約90m）に合わせ、
+// 合わせ点で縮尺が分かれば地面の 40m 相当にする。分からなければ地図の大きさから決める
+const CTRL_R_M = 40;
+function courseR() {
+  return pairs.length >= 2 ? CTRL_R_M * Math.hypot(A.re, A.im) : Math.max(W, H) * .012;
+}
+
 // 書き出す画像用。画像座標で描き、lw は画像座標での線の太さ。コントロール番号は入れない
 function drawScene(c, lw) {
   drawMap(c);
   if (!track) return;
   strokeTrack(c, lw, ra, rb);
-  drawCourse(c, lw * 3.5, lw * .6, { labels: false });
+  const r = courseR();
+  drawCourse(c, r, r * .13, { labels: false });
 }
 
 // ルートの線の太さ（画像座標）。地図に描いた線として扱い、画像の書き出しでは画面の拡大に関係なく同じ太さにする。
@@ -953,7 +961,7 @@ function tap(sx, sy) {
   const q = { x: (sx - view.x) / view.k, y: (sy - view.y) / view.k };
   if (mode === "pickMap") {
     const p = { id: newId("p"), i: pendingI, q };
-    pairs.push(p); history.push({ type: "pair", id: p.id });
+    pairs.push(p); record({ type: "pair", id: p.id });
     pendingI = -1; mode = "idle";
     solvePairs(); refresh();
     return;
@@ -963,7 +971,7 @@ function tap(sx, sy) {
     const near = pairs.find(p => Math.hypot(p.q.x * view.k + view.x - sx, p.q.y * view.k + view.y - sy) < 30);
     const c = { id: newId("c"), q: near ? { ...near.q } : q };
     if (insertAt >= 0) { ctrls.splice(insertAt, 0, c); insertAt = -1; } else ctrls.push(c);
-    history.push({ type: "ctrl", id: c.id });
+    record({ type: "ctrl", id: c.id });
     assignCtrls(); refresh();
     return;
   }
@@ -1018,15 +1026,30 @@ $("ctrlBtn").addEventListener("click", () => {
   if (mode === "pickCtrl") { mode = "idle"; insertAt = -1; refresh(); return; }
   startCtrl();
 });
-// 最後に置いた点（合わせ点かコントロール）を取り消す
+// 新しく点を置いたら記録し、「進む」で戻せる点は捨てる
+function record(h) { history.push(h); redoStack = []; }
+function relayout(type) { if (type === "pair") solvePairs(); else assignCtrls(); }
+
+// 最後に置いた点（合わせ点かコントロール）を取り消す。外した点は「進む」用に取っておく
 $("undoBtn").addEventListener("click", () => {
   let done = false;
   while (history.length && !done) {
     const h = history.pop(), list = h.type === "pair" ? pairs : ctrls, k = list.findIndex(x => x.id === h.id);
-    if (k >= 0) { list.splice(k, 1); done = true; if (h.type === "pair") solvePairs(); else assignCtrls(); }
+    if (k >= 0) { redoStack.push({ type: h.type, item: list.splice(k, 1)[0], index: k }); done = true; relayout(h.type); }
   }
-  if (!done) { if (ctrls.length) { ctrls.pop(); assignCtrls(); } else if (pairs.length) { pairs.pop(); solvePairs(); } }
+  if (!done) {
+    const type = ctrls.length ? "ctrl" : pairs.length ? "pair" : null, list = type === "pair" ? pairs : ctrls;
+    if (type) { redoStack.push({ type, item: list.pop(), index: list.length }); relayout(type); }
+  }
   refresh();
+});
+$("redoBtn").addEventListener("click", () => {
+  const r = redoStack.pop();
+  if (!r) return;
+  const list = r.type === "pair" ? pairs : ctrls;
+  list.splice(Math.min(r.index, list.length), 0, r.item);
+  history.push({ type: r.type, id: r.item.id });
+  relayout(r.type); refresh();
 });
 $("fitBtn").addEventListener("click", () => (zoomLeg && !$("zoom").hidden ? fitLeg(zoomLeg) : fitView()));
 
@@ -1237,7 +1260,7 @@ $("pairsToCtrl").addEventListener("click", () => {
   for (const p of [...pairs].sort((a, b) => a.i - b.i)) {
     if (used.has(`${p.q.x},${p.q.y}`)) continue;
     const c = { id: newId("c"), q: { ...p.q } };
-    ctrls.push(c); history.push({ type: "ctrl", id: c.id });
+    ctrls.push(c); record({ type: "ctrl", id: c.id });
   }
   assignCtrls(); refresh();
 });
@@ -1258,6 +1281,7 @@ function refresh() {
   $("pairBtn").disabled = !(track && img);
   $("ctrlBtn").disabled = !track;
   $("undoBtn").disabled = !(pairs.length || ctrls.length);
+  $("redoBtn").disabled = !redoStack.length;
   $("alignMsg").textContent = alignText();
   renderCtrlList();
   exportFile = null; syncExport(); syncSave();
@@ -1289,7 +1313,7 @@ $("imgFile").addEventListener("change", async e => {
     }
     img = im; W = im.naturalWidth; H = im.naturalHeight; mapBlob = blob; mapDirty = true;
     $("imgLabel").classList.add("done");
-    pairs = []; ctrls = []; history = []; insertAt = -1; mode = "idle"; pendingI = -1;
+    pairs = []; ctrls = []; history = []; redoStack = []; insertAt = -1; mode = "idle"; pendingI = -1;
     if (track) fitTrack();
     fitView(); refresh();
     loadMsg(`地図：${f.name}（${W}×${H}px、${Math.round(blob.size / 1024)}KB）`);
@@ -1627,7 +1651,7 @@ function applySettings(s) {
   // コントロールを分ける前に保存したものは、合わせ点を通った順にコントロールとみなす（反省の対応を保つ）
   ctrls = s.ctrls ? s.ctrls.map(c => ({ id: c.id, q: { ...c.q }, fix: c.fix }))
     : [...pairs].sort((a, b) => a.i - b.i).map(p => ({ id: p.id, q: { ...p.q } }));
-  history = []; insertAt = -1;
+  history = []; redoStack = []; insertAt = -1;
   ra = s.ra ?? 0; rb = Math.min(s.rb ?? track.n - 1, track.n - 1);
   for (const [id, v] of [["smooth", s.smooth], ["lw", s.lw], ["op", s.op], ["alpha", s.alpha ?? 100]]) if (v != null) $(id).value = v;
   if (s.halo != null) $("halo").checked = s.halo;
@@ -1642,7 +1666,7 @@ function applySettings(s) {
 
 function resetRoute() {
   route = { id: null, title: "", date: "", activityId: null, notes: {}, lap: null };
-  lapAll = null; img = null; track = null; pairs = []; ctrls = []; history = []; insertAt = -1; mapBlob = null; W = H = 2000; trackDirty = mapDirty = false;
+  lapAll = null; img = null; track = null; pairs = []; ctrls = []; history = []; redoStack = []; insertAt = -1; mapBlob = null; W = H = 2000; trackDirty = mapDirty = false;
   mode = "idle"; pendingI = -1; probeI = -1;
   colorMode = "grad"; applyColorMode();   // 新しく作るときはグラデーションから
   $("title").value = ""; $("raceDate").value = ""; $("imgFile").value = ""; $("gpxFile").value = "";
